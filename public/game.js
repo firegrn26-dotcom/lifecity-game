@@ -1768,6 +1768,7 @@ let buildings = [
     { name: "Магазин", x: 1160, y: 500, w: 260, h: 130, color: "#8a6218" },
     { name: "Автосервис", x: 1160, y: 815, w: 270, h: 105, color: "#464b55" },
     { name: "Полиция", x: 1600, y: 210, w: 235, h: 165, color: "#1f4d96" },
+    { name: "Мусороперерабатывающий завод", x: 1505, y: 610, w: 430, h: 250, color: "#3d5861" },
 ];
 
 // Защита от случайного дубля здания при будущих правках карты.
@@ -3240,7 +3241,8 @@ function buildingPalette(name, fallback) {
         "Мусорка":    { roof: "#48525b", edge: "#182029", accent: "#9bff6c", label: "МУСОРКА", type: "trash", labelY: 0.78 },
         "Автосервис": { roof: "#555b66", edge: "#1d232b", accent: "#ff9d3c", label: "АВТОСЕРВИС", type: "service", labelY: 0.74 },
         "Полиция":    { roof: "#24579d", edge: "#0b1f42", accent: "#62caff", label: "ПОЛИЦИЯ", type: "police", labelY: 0.72 },
-        "Жилой дом":  { roof: "#566276", edge: "#202938", accent: "#66cfff", label: "ЖИЛОЙ ДОМ", type: "home", labelY: 0.83 }
+        "Жилой дом":  { roof: "#566276", edge: "#202938", accent: "#66cfff", label: "ЖИЛОЙ ДОМ", type: "home", labelY: 0.83 },
+        "Мусороперерабатывающий завод": { roof: "#3d5861", edge: "#14252b", accent: "#9bff6c", label: "МУСОРОПЕРЕРАБАТЫВАЮЩИЙ ЗАВОД", type: "recyclingFactory", labelY: 0.80 }
     };
     return map[name] || { roof: fallback || "#4b5563", edge: "#1c2430", accent: UI.blue, label: String(name || "ЗДАНИЕ").toUpperCase(), type: "default", labelY: 0.72 };
 }
@@ -3362,6 +3364,73 @@ function drawTopDownEntrance(x, y, w, h, accent) {
     ctx.restore();
 }
 
+
+function drawFactoryParkingAndTrucks(x, y, w, h, accent) {
+    ctx.save();
+    const t = performance.now() / 1000;
+    const lotX = x + w * 0.06;
+    const lotY = y + h + 12;
+    const lotW = w * 0.88;
+    const lotH = 112;
+
+    drawTopDownBlock(lotX, lotY, lotW, lotH, 14, "rgba(32,36,39,0.96)", "rgba(255,255,255,0.12)", 1.2);
+    drawTopDownBlock(lotX + 9, lotY + 9, lotW - 18, lotH - 18, 10, "rgba(20,23,26,0.55)", "rgba(255,255,255,0.05)", 1);
+
+    ctx.strokeStyle = "rgba(255,255,255,0.30)";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([13, 9]);
+    for (let i = 1; i < 5; i++) {
+        const px = lotX + i * lotW / 5;
+        ctx.beginPath();
+        ctx.moveTo(px, lotY + 16);
+        ctx.lineTo(px, lotY + lotH - 16);
+        ctx.stroke();
+    }
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = "rgba(155,255,108,0.88)";
+    ctx.font = "bold 13px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("ПАРКОВКА ГРУЗОВИКОВ", lotX + lotW / 2, lotY + lotH - 15);
+
+    const trucks = [
+        { x: lotX + 28, y: lotY + 25, body: "#5a6973", cab: "#7ac56b", dir: 1 },
+        { x: lotX + lotW * 0.31, y: lotY + 25, body: "#64707a", cab: "#d6b15d", dir: 1 },
+        { x: lotX + lotW * 0.58, y: lotY + 24, body: "#53616a", cab: "#6cb9d8", dir: 1 },
+        { x: lotX + lotW * 0.78, y: lotY + 25, body: "#5b636b", cab: "#d56d5f", dir: 1 }
+    ];
+
+    for (const tr of trucks) drawParkedGarbageTruck(tr.x, tr.y, 68, 40, tr.body, tr.cab, accent);
+
+    // Места для будущего спавна грузовиков.
+    for (let i = 0; i < 2; i++) {
+        const sx = lotX + lotW * (0.19 + i * 0.53);
+        const sy = lotY + 72;
+        drawTopDownBlock(sx, sy, 88, 23, 7, "rgba(155,255,108,0.07)", "rgba(155,255,108,0.28)", 1);
+        ctx.fillStyle = "rgba(155,255,108,0.42)";
+        ctx.font = "bold 10px Arial";
+        ctx.fillText("SPAWN", sx + 44, sy + 12 + Math.sin(t * 2 + i) * 1.5);
+    }
+    ctx.restore();
+}
+
+function drawParkedGarbageTruck(x, y, w, h, bodyColor, cabColor, accent) {
+    ctx.save();
+    drawTopDownBlock(x + 3, y + 4, w, h, 8, "rgba(0,0,0,0.24)", null);
+    drawTopDownBlock(x, y, w * 0.64, h, 8, bodyColor, "rgba(255,255,255,0.18)", 1);
+    drawTopDownBlock(x + w * 0.58, y + h * 0.09, w * 0.38, h * 0.82, 7, cabColor, "rgba(255,255,255,0.20)", 1);
+    drawTopDownBlock(x + w * 0.09, y + h * 0.18, w * 0.38, h * 0.20, 4, "rgba(7,12,16,0.42)", "rgba(255,255,255,0.10)", 1);
+    ctx.fillStyle = colorWithAlpha(accent, 0.64);
+    ctx.fillRect(x + w * 0.15, y + h * 0.52, w * 0.33, 4);
+    ctx.fillStyle = "rgba(8,10,12,0.92)";
+    ctx.fillRect(x + 9, y - 3, 14, 5);
+    ctx.fillRect(x + 9, y + h - 2, 14, 5);
+    ctx.fillRect(x + w - 23, y - 3, 14, 5);
+    ctx.fillRect(x + w - 23, y + h - 2, 14, 5);
+    ctx.restore();
+}
+
 function drawBuildingTypeDetails(x, y, w, h, p) {
     ctx.save();
 
@@ -3476,6 +3545,73 @@ function drawBuildingTypeDetails(x, y, w, h, p) {
         ctx.fillRect(x + w * 0.38, y + 7, w * 0.10, 5);
         ctx.fillStyle = "rgba(98,202,255,0.95)";
         ctx.fillRect(x + w * 0.52, y + 7, w * 0.10, 5);
+    }
+
+
+    if (p.type === "recyclingFactory") {
+        // Завод: крупная промышленная крыша, конвейеры, трубы и живая анимация переработки.
+        const t = performance.now() / 1000;
+        drawFactoryParkingAndTrucks(x, y, w, h, p.accent);
+
+        drawTopDownBlock(x + w * 0.05, y + h * 0.12, w * 0.42, h * 0.48, 13, "rgba(10,19,24,0.52)", "rgba(155,255,108,0.23)", 1);
+        drawTopDownBlock(x + w * 0.53, y + h * 0.12, w * 0.38, h * 0.48, 13, "rgba(10,19,24,0.46)", "rgba(255,255,255,0.12)", 1);
+
+        // Движущаяся лента сортировки.
+        const beltX = x + w * 0.10;
+        const beltY = y + h * 0.31;
+        const beltW = w * 0.76;
+        const beltH = h * 0.12;
+        drawTopDownBlock(beltX, beltY, beltW, beltH, 8, "rgba(3,8,11,0.72)", "rgba(155,255,108,0.45)", 1.2);
+        ctx.save();
+        ctx.beginPath();
+        roundedRect(beltX, beltY, beltW, beltH, 8);
+        ctx.clip();
+        for (let i = -40; i < beltW + 40; i += 34) {
+            const bx = beltX + ((i + t * 42) % (beltW + 60)) - 30;
+            ctx.fillStyle = i % 68 === 0 ? "rgba(155,255,108,0.75)" : "rgba(95,180,210,0.65)";
+            ctx.fillRect(bx, beltY + 7, 18, beltH - 14);
+        }
+        ctx.restore();
+
+        // Прессы работают вверх-вниз.
+        for (let i = 0; i < 3; i++) {
+            const pressX = x + w * (0.18 + i * 0.15);
+            const pressY = y + h * 0.15 + Math.sin(t * 3.2 + i) * 4;
+            drawTopDownBlock(pressX, pressY, w * 0.07, h * 0.10, 5, colorWithAlpha(p.accent, 0.34), colorWithAlpha(p.accent, 0.72), 1);
+        }
+
+        // Силосы/баки сырья сверху.
+        for (let i = 0; i < 3; i++) {
+            const cx = x + w * (0.61 + i * 0.10);
+            const cy = y + h * 0.22;
+            ctx.beginPath();
+            ctx.arc(cx, cy, Math.min(w, h) * 0.055, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(210,230,220,0.18)";
+            ctx.fill();
+            ctx.strokeStyle = colorWithAlpha(p.accent, 0.45 + Math.sin(t * 2 + i) * 0.12);
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        // Трубы с мягким дымом, читаемым сверху.
+        for (let i = 0; i < 2; i++) {
+            const sx = x + w * (0.79 + i * 0.07);
+            const sy = y + h * 0.56;
+            drawTopDownBlock(sx - 12, sy - 12, 24, 24, 8, "rgba(20,28,30,0.90)", "rgba(255,255,255,0.16)", 1);
+            for (let j = 0; j < 3; j++) {
+                ctx.beginPath();
+                ctx.arc(sx + Math.sin(t + j) * 8, sy - 25 - j * 14 - (t * 10 % 18), 10 + j * 3, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(190,220,205,${0.12 - j * 0.025})`;
+                ctx.fill();
+            }
+        }
+
+        // Значок переработки.
+        ctx.fillStyle = colorWithAlpha(p.accent, 0.92);
+        ctx.font = `bold ${Math.max(26, h / 5)}px Arial`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("♻", x + w * 0.50, y + h * 0.58);
     }
 
     if (p.type === "default") {
