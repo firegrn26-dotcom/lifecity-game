@@ -1768,7 +1768,7 @@ let buildings = [
     { name: "Магазин", x: 1160, y: 500, w: 260, h: 130, color: "#8a6218" },
     { name: "Автосервис", x: 1160, y: 815, w: 270, h: 105, color: "#464b55" },
     { name: "Полиция", x: 1600, y: 210, w: 235, h: 165, color: "#1f4d96" },
-    { name: "Мусороперерабатывающий завод", x: 1605, y: 705, w: 430, h: 240, color: "#3d5861" },
+    { name: "Мусороперерабатывающий завод", x: 1585, y: 705, w: 430, h: 240, color: "#3d5861", type: "recyclingFactory", alwaysVisibleComplex: true },
 ];
 
 // Защита от случайного дубля здания при будущих правках карты.
@@ -2071,7 +2071,7 @@ let buildingZones = [
     { name: "Торговый квартал", x: 1140, y: 480, w: 305, h: 175 },
     { name: "Сервисный квартал", x: 1140, y: 800, w: 315, h: 145 },
     { name: "Полицейский квартал", x: 1580, y: 190, w: 285, h: 205 },
-    { name: "Промышленная зона переработки", x: 1585, y: 685, w: 820, h: 300 }
+    { name: "Промышленная зона переработки", x: 1565, y: 680, w: 780, h: 305 }
 ];
 
 let parks = [
@@ -3365,6 +3365,32 @@ function drawTopDownEntrance(x, y, w, h, accent) {
     ctx.restore();
 }
 
+
+
+function drawRecyclingFactoryMapZone(b) {
+    const x = b.x - camera.x;
+    const y = b.y - camera.y;
+    const zoneW = b.w + 300;
+    const zoneH = Math.max(285, b.h + 36);
+
+    if (x + zoneW < -80 || y + zoneH < -80 || x > canvas.width + 80 || y > canvas.height + 80) return;
+
+    ctx.save();
+    drawTopDownBlock(x - 16, y - 18, zoneW, zoneH, 18, "rgba(34,48,39,0.42)", "rgba(155,255,108,0.22)", 1.4);
+    ctx.setLineDash([12, 9]);
+    ctx.strokeStyle = "rgba(155,255,108,0.30)";
+    ctx.lineWidth = 2;
+    roundedRect(x - 8, y - 10, zoneW - 16, zoneH - 16, 14);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = "rgba(155,255,108,0.48)";
+    ctx.font = "bold 13px Arial";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText("ПРОМЗОНА ПЕРЕРАБОТКИ", x + 12, y - 4);
+    ctx.restore();
+}
 
 function drawFactoryParkingAndTrucks(x, y, w, h, accent) {
     ctx.save();
@@ -7163,6 +7189,13 @@ for (let y = labelStartY; y <= labelEndY; y += labelStep) {
     );
 }
 
+}
+
+    // промышленные зоны под зданиями — рисуются отдельно, чтобы завод точно был включён на карте
+for (let b of buildings) {
+    if (b.type === "recyclingFactory" || b.name === "Мусороперерабатывающий завод") {
+        drawRecyclingFactoryMapZone(b);
+    }
 }
 
     // здания — стилизованная отрисовка без изменения размеров и коллизий
