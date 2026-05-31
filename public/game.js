@@ -3746,17 +3746,164 @@ function drawFactoryParkingAndTrucks(x, y, w, h, accent) {
 
 function drawParkedGarbageTruck(x, y, w, h, bodyColor, cabColor, accent) {
     ctx.save();
-    drawTopDownBlock(x + 3, y + 4, w, h, 8, "rgba(0,0,0,0.24)", null);
-    drawTopDownBlock(x, y, w * 0.64, h, 8, bodyColor, "rgba(255,255,255,0.18)", 1);
-    drawTopDownBlock(x + w * 0.58, y + h * 0.09, w * 0.38, h * 0.82, 7, cabColor, "rgba(255,255,255,0.20)", 1);
-    drawTopDownBlock(x + w * 0.09, y + h * 0.18, w * 0.38, h * 0.20, 4, "rgba(7,12,16,0.42)", "rgba(255,255,255,0.10)", 1);
-    ctx.fillStyle = colorWithAlpha(accent, 0.64);
-    ctx.fillRect(x + w * 0.15, y + h * 0.52, w * 0.33, 4);
-    ctx.fillStyle = "rgba(8,10,12,0.92)";
-    ctx.fillRect(x + 9, y - 3, 14, 5);
-    ctx.fillRect(x + 9, y + h - 2, 14, 5);
-    ctx.fillRect(x + w - 23, y - 3, 14, 5);
-    ctx.fillRect(x + w - 23, y + h - 2, 14, 5);
+    const t = performance.now() / 1000;
+    const lift = 7;
+
+    // 2.5D тень: грузовик больше не выглядит как плоская наклейка на парковке.
+    ctx.save();
+    ctx.translate(x + w / 2 + 5, y + h / 2 + 8);
+    ctx.scale(1, 0.42);
+    ctx.beginPath();
+    ctx.arc(0, 0, w * 0.55, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0,0,0,0.30)";
+    ctx.fill();
+    ctx.restore();
+
+    // Нижняя темная грань кузова.
+    drawTopDownBlock(x + 2, y + lift, w * 0.66, h, 8, "rgba(17,24,27,0.92)", "rgba(0,0,0,0.28)", 1);
+    drawTopDownBlock(x + w * 0.58, y + lift + h * 0.09, w * 0.39, h * 0.82, 7, "rgba(18,26,29,0.90)", "rgba(0,0,0,0.25)", 1);
+
+    // Верх кузова и кабины.
+    drawTopDownBlock(x, y, w * 0.66, h, 8, bodyColor, "rgba(255,255,255,0.20)", 1.2);
+    drawTopDownBlock(x + w * 0.58, y + h * 0.09, w * 0.39, h * 0.82, 7, cabColor, "rgba(255,255,255,0.22)", 1.2);
+
+    // Бункер/контейнер мусоровоза с объемной кромкой.
+    drawTopDownBlock(x + w * 0.08, y + h * 0.16, w * 0.43, h * 0.27, 5, "rgba(5,12,14,0.36)", "rgba(255,255,255,0.10)", 1);
+    ctx.strokeStyle = "rgba(255,255,255,0.16)";
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 4; i++) {
+        ctx.beginPath();
+        ctx.moveTo(x + w * (0.10 + i * 0.09), y + h * 0.19);
+        ctx.lineTo(x + w * (0.10 + i * 0.09), y + h * 0.40);
+        ctx.stroke();
+    }
+
+    // Кабина: стекло, капот, фары.
+    drawTopDownBlock(x + w * 0.65, y + h * 0.17, w * 0.20, h * 0.25, 4, "rgba(110,205,240,0.32)", "rgba(255,255,255,0.24)", 1);
+    drawTopDownBlock(x + w * 0.84, y + h * 0.25, w * 0.10, h * 0.50, 5, "rgba(255,255,255,0.09)", "rgba(255,255,255,0.10)", 1);
+    ctx.fillStyle = "rgba(255,245,156,0.90)";
+    ctx.fillRect(x + w * 0.93, y + h * 0.24, 4, 5);
+    ctx.fillRect(x + w * 0.93, y + h * 0.62, 4, 5);
+
+    // Зеленая рабочая полоса и знак переработки.
+    ctx.fillStyle = colorWithAlpha(accent, 0.72);
+    ctx.fillRect(x + w * 0.14, y + h * 0.55, w * 0.36, 4);
+    ctx.font = "bold 13px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("♻", x + w * 0.32, y + h * 0.72);
+
+    // Колеса с боковой глубиной.
+    const wheels = [
+        [x + 12, y - 3], [x + 12, y + h - 2],
+        [x + w * 0.55, y - 3], [x + w * 0.55, y + h - 2],
+        [x + w - 19, y - 3], [x + w - 19, y + h - 2]
+    ];
+    for (const [wx, wy] of wheels) {
+        ctx.fillStyle = "rgba(4,6,7,0.95)";
+        roundedRect(wx, wy, 15, 6, 3);
+        ctx.fill();
+        ctx.fillStyle = "rgba(95,105,110,0.55)";
+        ctx.fillRect(wx + 4, wy + 2, 7, 2);
+    }
+
+    // Маячок и легкая анимация готовности к выезду.
+    const blink = 0.45 + Math.sin(t * 5 + x * 0.01) * 0.35;
+    ctx.fillStyle = `rgba(255,196,55,${blink})`;
+    ctx.beginPath();
+    ctx.arc(x + w * 0.68, y + h * 0.10, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Небольшой выхлоп/пар у стоящих машин.
+    for (let i = 0; i < 3; i++) {
+        const life = ((t * 0.35 + i * 0.27 + x * 0.003) % 1);
+        ctx.beginPath();
+        ctx.arc(x - 4 - life * 12, y + h * 0.50 - life * 8, 2 + life * 5, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(210,220,215,${0.11 * (1 - life)})`;
+        ctx.fill();
+    }
+    ctx.restore();
+}
+
+function drawBuildingWorkAnimation25D(x, y, w, h, p) {
+    const t = performance.now() / 1000;
+    ctx.save();
+
+    if (p.type === "shop") {
+        // Живые витрины: мягкое свечение и бегущая вывеска.
+        const glow = 0.22 + Math.sin(t * 2.4) * 0.08;
+        drawTopDownBlock(x + w * 0.12, y + h * 0.72, w * 0.58, h * 0.08, 6, `rgba(255,218,94,${glow})`, "rgba(255,218,94,0.35)", 1);
+        for (let i = 0; i < 5; i++) {
+            ctx.fillStyle = i === Math.floor((t * 5) % 5) ? colorWithAlpha(p.accent, 0.95) : "rgba(255,255,255,0.18)";
+            ctx.fillRect(x + w * (0.18 + i * 0.09), y + h * 0.17, 5, 5);
+        }
+    }
+
+    if (p.type === "cafe") {
+        // Теплая веранда и легкий пар от кухни.
+        for (let i = 0; i < 4; i++) {
+            const life = ((t * 0.28 + i * 0.21) % 1);
+            ctx.beginPath();
+            ctx.arc(x + w * 0.68 + Math.sin(t + i) * 5, y + h * 0.28 - life * 30, 4 + life * 9, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255,230,180,${0.10 * (1 - life)})`;
+            ctx.fill();
+        }
+        ctx.fillStyle = `rgba(255,190,86,${0.20 + Math.sin(t * 3) * 0.05})`;
+        ctx.beginPath();
+        ctx.arc(x + w * 0.50, y + h * 0.42, Math.min(w, h) * 0.18, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    if (p.type === "service") {
+        // Автосервис: мигающий сварочный свет и ворота.
+        const spark = Math.max(0, Math.sin(t * 8));
+        ctx.fillStyle = `rgba(100,210,255,${0.08 + spark * 0.28})`;
+        ctx.fillRect(x + w * 0.18, y + h * 0.42, w * 0.30, h * 0.11);
+        if (spark > 0.72) {
+            ctx.strokeStyle = "rgba(180,235,255,0.75)";
+            ctx.beginPath();
+            ctx.moveTo(x + w * 0.34, y + h * 0.48);
+            ctx.lineTo(x + w * 0.42, y + h * 0.41);
+            ctx.moveTo(x + w * 0.36, y + h * 0.50);
+            ctx.lineTo(x + w * 0.46, y + h * 0.55);
+            ctx.stroke();
+        }
+    }
+
+    if (p.type === "police") {
+        // Полиция: сине-красный маяк на крыше.
+        const red = 0.25 + Math.max(0, Math.sin(t * 6)) * 0.55;
+        const blue = 0.25 + Math.max(0, Math.sin(t * 6 + Math.PI)) * 0.55;
+        ctx.fillStyle = `rgba(255,65,80,${red})`;
+        ctx.fillRect(x + w * 0.32, y + h * 0.16, w * 0.14, h * 0.07);
+        ctx.fillStyle = `rgba(80,180,255,${blue})`;
+        ctx.fillRect(x + w * 0.54, y + h * 0.16, w * 0.14, h * 0.07);
+    }
+
+    if (p.type === "bank") {
+        // Банк: спокойное премиальное подсвечивание входа.
+        const pulse = 0.18 + Math.sin(t * 1.4) * 0.05;
+        drawTopDownBlock(x + w * 0.36, y + h * 0.72, w * 0.28, h * 0.08, 6, `rgba(255,215,106,${pulse})`, "rgba(255,215,106,0.25)", 1);
+    }
+
+    if (p.type === "pharmacy") {
+        // Аптека: пульсирующий зеленый крест.
+        const a = 0.18 + Math.sin(t * 2.7) * 0.07;
+        ctx.fillStyle = colorWithAlpha(p.accent, a);
+        ctx.fillRect(x + w * 0.46, y + h * 0.18, w * 0.08, h * 0.48);
+        ctx.fillRect(x + w * 0.32, y + h * 0.35, w * 0.36, h * 0.09);
+    }
+
+    if (p.type === "home") {
+        // Несколько окон слегка меняют яркость, чтобы город был живым.
+        for (let i = 0; i < 6; i++) {
+            const wx = x + w * (0.16 + (i % 3) * 0.24);
+            const wy = y + h * (0.18 + Math.floor(i / 3) * 0.24);
+            const lit = 0.08 + Math.max(0, Math.sin(t * 0.9 + i * 1.7)) * 0.16;
+            drawTopDownBlock(wx, wy, w * 0.08, h * 0.08, 3, `rgba(255,224,140,${lit})`, null, 1);
+        }
+    }
+
     ctx.restore();
 }
 
@@ -3969,6 +4116,8 @@ function drawBuildingTypeDetails(x, y, w, h, p) {
     if (p.type === "default") {
         drawTinyWindows(x, y, w, h * 0.72, 3, 3, p.accent);
     }
+
+    drawBuildingWorkAnimation25D(x, y, w, h, p);
 
     ctx.restore();
 }
