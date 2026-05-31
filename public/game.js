@@ -1768,7 +1768,7 @@ let buildings = [
     { name: "Магазин", x: 1160, y: 500, w: 260, h: 130, color: "#8a6218" },
     { name: "Автосервис", x: 1160, y: 815, w: 270, h: 105, color: "#464b55" },
     { name: "Полиция", x: 1600, y: 210, w: 235, h: 165, color: "#1f4d96" },
-    { name: "Мусороперерабатывающий завод", x: 1585, y: 705, w: 430, h: 240, color: "#3d5861", type: "recyclingFactory", alwaysVisibleComplex: true },
+    { name: "Мусороперерабатывающий завод", x: 1545, y: 710, w: 430, h: 240, color: "#3d5861", type: "recyclingFactory", alwaysVisibleComplex: true },
 ];
 
 // Защита от случайного дубля здания при будущих правках карты.
@@ -1777,6 +1777,56 @@ buildings = buildings.filter((b, index, arr) => {
     const key = `${b.name}|${b.x}|${b.y}|${b.w}|${b.h}`;
     return arr.findIndex(item => `${item.name}|${item.x}|${item.y}|${item.w}|${item.h}` === key) === index;
 });
+
+// ===============================
+// ♻️ МУСОРОПЕРЕРАБАТЫВАЮЩИЙ ЗАВОД — ГАРАНТИРОВАННОЕ ВКЛЮЧЕНИЕ НА КАРТЕ
+// Раньше завод был только обычной записью buildings с type: "recyclingFactory".
+// Если при будущей правке карту пересоберут или потеряют type, комплекс исчезнет.
+// Эта проверка всегда восстанавливает завод, парковку и промзону до запуска рендера.
+// ===============================
+const recyclingFactory = {
+    name: "Мусороперерабатывающий завод",
+    x: 1545,
+    y: 710,
+    w: 430,
+    h: 240,
+    color: "#3d5861",
+    type: "recyclingFactory",
+    alwaysVisibleComplex: true
+};
+
+function ensureRecyclingFactoryOnMap() {
+    let factory = buildings.find(b => b.type === "recyclingFactory" || b.name === recyclingFactory.name);
+
+    if (!factory) {
+        factory = { ...recyclingFactory };
+        buildings.push(factory);
+    } else {
+        Object.assign(factory, {
+            name: recyclingFactory.name,
+            x: recyclingFactory.x,
+            y: recyclingFactory.y,
+            w: recyclingFactory.w,
+            h: recyclingFactory.h,
+            color: recyclingFactory.color,
+            type: "recyclingFactory",
+            alwaysVisibleComplex: true
+        });
+    }
+
+    if (Array.isArray(buildingZones) && !buildingZones.some(z => z.name === "Промышленная зона переработки")) {
+        buildingZones.push({
+            name: "Промышленная зона переработки",
+            x: factory.x - 20,
+            y: factory.y - 28,
+            w: factory.w + 320,
+            h: Math.max(300, factory.h + 64)
+        });
+    }
+
+    return factory;
+}
+
 
 // ===============================
 // 🧱 COLLISION CHECK
@@ -2073,6 +2123,8 @@ let buildingZones = [
     { name: "Полицейский квартал", x: 1580, y: 190, w: 285, h: 205 },
     { name: "Промышленная зона переработки", x: 1565, y: 680, w: 780, h: 305 }
 ];
+
+ensureRecyclingFactoryOnMap();
 
 let parks = [
     // Парки в отдельных свободных местах, без пересечения с дорогами и зданиями.
@@ -3389,6 +3441,51 @@ function drawRecyclingFactoryMapZone(b) {
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
     ctx.fillText("ПРОМЗОНА ПЕРЕРАБОТКИ", x + 12, y - 4);
+    ctx.restore();
+}
+
+
+function drawRecyclingFactoryScreenMarker(factory) {
+    if (!factory) return;
+
+    const centerX = factory.x + factory.w / 2;
+    const centerY = factory.y + factory.h / 2;
+    const sx = centerX - camera.x;
+    const sy = centerY - camera.y;
+    const visible = sx >= 0 && sx <= canvas.width && sy >= 0 && sy <= canvas.height;
+
+    if (visible) return;
+
+    const pad = 34;
+    const markerX = Math.max(pad, Math.min(canvas.width - pad, sx));
+    const markerY = Math.max(pad, Math.min(canvas.height - pad, sy));
+    const angle = Math.atan2(sy - canvas.height / 2, sx - canvas.width / 2);
+
+    ctx.save();
+    ctx.translate(markerX, markerY);
+    ctx.rotate(angle);
+    ctx.fillStyle = "rgba(155,255,108,0.88)";
+    ctx.beginPath();
+    ctx.moveTo(18, 0);
+    ctx.lineTo(-10, -9);
+    ctx.lineTo(-5, 0);
+    ctx.lineTo(-10, 9);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.fillStyle = "rgba(8,15,12,0.78)";
+    ctx.strokeStyle = "rgba(155,255,108,0.45)";
+    ctx.lineWidth = 1.2;
+    roundedRect(markerX - 70, markerY + 16, 140, 25, 8);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "rgba(155,255,108,0.95)";
+    ctx.font = "bold 11px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("♻ ЗАВОД", markerX, markerY + 29);
     ctx.restore();
 }
 
@@ -7192,16 +7289,16 @@ for (let y = labelStartY; y <= labelEndY; y += labelStep) {
 }
 
     // промышленные зоны под зданиями — рисуются отдельно, чтобы завод точно был включён на карте
-for (let b of buildings) {
-    if (b.type === "recyclingFactory" || b.name === "Мусороперерабатывающий завод") {
-        drawRecyclingFactoryMapZone(b);
-    }
-}
+const activeRecyclingFactory = ensureRecyclingFactoryOnMap();
+drawRecyclingFactoryMapZone(activeRecyclingFactory);
 
     // здания — стилизованная отрисовка без изменения размеров и коллизий
 for (let b of buildings) {
     drawStyledBuilding(b);
 }
+
+// Если завод сейчас за экраном, показываем направление к нему.
+drawRecyclingFactoryScreenMarker(activeRecyclingFactory);
 
     // игроки
     for (let id in players) {
