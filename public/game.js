@@ -3721,15 +3721,38 @@ function drawBuildingTypeDetails(x, y, w, h, p) {
             ctx.stroke();
         }
 
-        // Трубы с мягким дымом, читаемым сверху.
+        // Трубы и эффектный дым. Для вида сверху дым должен уходить ВВЕРХ по экрану
+        // (уменьшение Y), расширяться, светлеть и слегка сноситься ветром вправо.
         for (let i = 0; i < 2; i++) {
             const sx = x + w * (0.79 + i * 0.07);
             const sy = y + h * 0.56;
-            drawTopDownBlock(sx - 12, sy - 12, 24, 24, 8, "rgba(20,28,30,0.90)", "rgba(255,255,255,0.16)", 1);
-            for (let j = 0; j < 3; j++) {
+            const stackPulse = 0.5 + Math.sin(t * 4 + i) * 0.5;
+
+            drawTopDownBlock(sx - 13, sy - 13, 26, 26, 8, "rgba(18,25,27,0.96)", "rgba(255,255,255,0.18)", 1);
+            ctx.beginPath();
+            ctx.arc(sx, sy, 7 + stackPulse * 1.2, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(6,10,11,0.82)";
+            ctx.fill();
+            ctx.strokeStyle = colorWithAlpha(p.accent, 0.22 + stackPulse * 0.18);
+            ctx.lineWidth = 1.4;
+            ctx.stroke();
+
+            for (let j = 0; j < 9; j++) {
+                const life = ((t * 0.42 + j * 0.115 + i * 0.18) % 1);
+                const rise = life * 118;
+                const drift = life * 44 + Math.sin(t * 1.5 + j * 1.7 + i) * 9;
+                const puffX = sx + drift;
+                const puffY = sy - 20 - rise;
+                const radius = 8 + life * 25 + Math.sin(t * 2 + j) * 1.8;
+                const alpha = Math.max(0, 0.24 * (1 - life));
+
+                const smokeGradient = ctx.createRadialGradient(puffX, puffY, 2, puffX, puffY, radius);
+                smokeGradient.addColorStop(0, `rgba(218,238,225,${alpha})`);
+                smokeGradient.addColorStop(0.55, `rgba(174,204,190,${alpha * 0.55})`);
+                smokeGradient.addColorStop(1, "rgba(174,204,190,0)");
+                ctx.fillStyle = smokeGradient;
                 ctx.beginPath();
-                ctx.arc(sx + Math.sin(t + j) * 8, sy - 25 - j * 14 - (t * 10 % 18), 10 + j * 3, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(190,220,205,${0.12 - j * 0.025})`;
+                ctx.arc(puffX, puffY, radius, 0, Math.PI * 2);
                 ctx.fill();
             }
         }
