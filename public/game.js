@@ -1768,7 +1768,7 @@ let buildings = [
     { name: "Магазин", x: 1160, y: 500, w: 260, h: 130, color: "#8a6218" },
     { name: "Автосервис", x: 1160, y: 815, w: 270, h: 105, color: "#464b55" },
     { name: "Полиция", x: 1600, y: 210, w: 235, h: 165, color: "#1f4d96" },
-    { name: "Мусороперерабатывающий завод", x: 1505, y: 610, w: 430, h: 250, color: "#3d5861" },
+    { name: "Мусороперерабатывающий завод", x: 1605, y: 705, w: 430, h: 240, color: "#3d5861" },
 ];
 
 // Защита от случайного дубля здания при будущих правках карты.
@@ -2070,7 +2070,8 @@ let buildingZones = [
     { name: "Коммунальная зона", x: 535, y: 680, w: 130, h: 100 },
     { name: "Торговый квартал", x: 1140, y: 480, w: 305, h: 175 },
     { name: "Сервисный квартал", x: 1140, y: 800, w: 315, h: 145 },
-    { name: "Полицейский квартал", x: 1580, y: 190, w: 285, h: 205 }
+    { name: "Полицейский квартал", x: 1580, y: 190, w: 285, h: 205 },
+    { name: "Промышленная зона переработки", x: 1585, y: 685, w: 820, h: 300 }
 ];
 
 let parks = [
@@ -3368,22 +3369,26 @@ function drawTopDownEntrance(x, y, w, h, accent) {
 function drawFactoryParkingAndTrucks(x, y, w, h, accent) {
     ctx.save();
     const t = performance.now() / 1000;
-    const lotX = x + w * 0.06;
-    const lotY = y + h + 12;
-    const lotW = w * 0.88;
-    const lotH = 112;
 
-    drawTopDownBlock(lotX, lotY, lotW, lotH, 14, "rgba(32,36,39,0.96)", "rgba(255,255,255,0.12)", 1.2);
+    // Парковка вынесена справа от завода, чтобы не попадать под южную магистраль
+    // и не сливаться с дорожным полотном. Так объект сразу читается на карте сверху.
+    const lotX = x + w + 18;
+    const lotY = y + 18;
+    const lotW = 250;
+    const lotH = Math.max(190, h - 36);
+
+    drawTopDownBlock(lotX - 12, lotY - 10, lotW + 24, lotH + 20, 16, "rgba(12,16,18,0.28)", "rgba(155,255,108,0.12)", 1);
+    drawTopDownBlock(lotX, lotY, lotW, lotH, 14, "rgba(32,36,39,0.96)", "rgba(255,255,255,0.14)", 1.2);
     drawTopDownBlock(lotX + 9, lotY + 9, lotW - 18, lotH - 18, 10, "rgba(20,23,26,0.55)", "rgba(255,255,255,0.05)", 1);
 
     ctx.strokeStyle = "rgba(255,255,255,0.30)";
     ctx.lineWidth = 2;
-    ctx.setLineDash([13, 9]);
-    for (let i = 1; i < 5; i++) {
-        const px = lotX + i * lotW / 5;
+    ctx.setLineDash([12, 8]);
+    for (let i = 1; i < 4; i++) {
+        const py = lotY + i * lotH / 4;
         ctx.beginPath();
-        ctx.moveTo(px, lotY + 16);
-        ctx.lineTo(px, lotY + lotH - 16);
+        ctx.moveTo(lotX + 16, py);
+        ctx.lineTo(lotX + lotW - 16, py);
         ctx.stroke();
     }
     ctx.setLineDash([]);
@@ -3392,25 +3397,25 @@ function drawFactoryParkingAndTrucks(x, y, w, h, accent) {
     ctx.font = "bold 13px Arial";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("ПАРКОВКА ГРУЗОВИКОВ", lotX + lotW / 2, lotY + lotH - 15);
+    ctx.fillText("ПАРКОВКА ГРУЗОВИКОВ", lotX + lotW / 2, lotY + 16);
 
     const trucks = [
-        { x: lotX + 28, y: lotY + 25, body: "#5a6973", cab: "#7ac56b", dir: 1 },
-        { x: lotX + lotW * 0.31, y: lotY + 25, body: "#64707a", cab: "#d6b15d", dir: 1 },
-        { x: lotX + lotW * 0.58, y: lotY + 24, body: "#53616a", cab: "#6cb9d8", dir: 1 },
-        { x: lotX + lotW * 0.78, y: lotY + 25, body: "#5b636b", cab: "#d56d5f", dir: 1 }
+        { x: lotX + 26, y: lotY + 42, body: "#5a6973", cab: "#7ac56b" },
+        { x: lotX + 142, y: lotY + 42, body: "#64707a", cab: "#d6b15d" },
+        { x: lotX + 26, y: lotY + 104, body: "#53616a", cab: "#6cb9d8" },
+        { x: lotX + 142, y: lotY + 104, body: "#5b636b", cab: "#d56d5f" }
     ];
 
-    for (const tr of trucks) drawParkedGarbageTruck(tr.x, tr.y, 68, 40, tr.body, tr.cab, accent);
+    for (const tr of trucks) drawParkedGarbageTruck(tr.x, tr.y, 78, 38, tr.body, tr.cab, accent);
 
     // Места для будущего спавна грузовиков.
     for (let i = 0; i < 2; i++) {
-        const sx = lotX + lotW * (0.19 + i * 0.53);
-        const sy = lotY + 72;
-        drawTopDownBlock(sx, sy, 88, 23, 7, "rgba(155,255,108,0.07)", "rgba(155,255,108,0.28)", 1);
-        ctx.fillStyle = "rgba(155,255,108,0.42)";
+        const sx = lotX + 26 + i * 116;
+        const sy = lotY + lotH - 48;
+        drawTopDownBlock(sx, sy, 88, 25, 7, "rgba(155,255,108,0.07)", "rgba(155,255,108,0.30)", 1);
+        ctx.fillStyle = "rgba(155,255,108,0.46)";
         ctx.font = "bold 10px Arial";
-        ctx.fillText("SPAWN", sx + 44, sy + 12 + Math.sin(t * 2 + i) * 1.5);
+        ctx.fillText("SPAWN", sx + 44, sy + 13 + Math.sin(t * 2 + i) * 1.5);
     }
     ctx.restore();
 }
@@ -3627,7 +3632,7 @@ function drawStyledBuilding(b) {
     const w = b.w;
     const h = b.h;
 
-    if (x + w < -100 || y + h < -100 || x > canvas.width + 100 || y > canvas.height + 100) return;
+    if (x + w < -360 || y + h < -180 || x > canvas.width + 360 || y > canvas.height + 180) return;
 
     const p = buildingPalette(b.name, b.color);
 
