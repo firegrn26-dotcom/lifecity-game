@@ -3358,6 +3358,110 @@ function drawRoofBase(x, y, w, h, p) {
     ctx.restore();
 }
 
+
+// ===============================
+// 🏙 LIFE CITY 2.5D RENDER STAGE 1
+// Визуальная высота не меняет координаты, коллизии и серверную логику.
+// Здания остаются на своих x/y/w/h, но получают объем, фасады и мягкую тень.
+// ===============================
+const LIFE_CITY_25D_ENABLED = true;
+
+function getBuilding25DHeight(b, p) {
+    const base = Math.min(72, Math.max(18, Math.floor(Math.min(b.w || 80, b.h || 60) * 0.22)));
+    const type = p && p.type;
+    if (type === "home") return Math.max(base, 42);
+    if (type === "city" || type === "bank") return Math.max(base, 50);
+    if (type === "recyclingFactory") return Math.max(base, 34);
+    if (type === "service" || type === "shop" || type === "police") return Math.max(base, 32);
+    if (type === "pharmacy") return Math.max(base, 28);
+    if (type === "trash") return Math.max(base, 20);
+    return base;
+}
+
+function drawRoofSurface25D(x, y, w, h, p) {
+    const roof = ctx.createLinearGradient(x, y, x + w, y + h);
+    roof.addColorStop(0, lightenColor(p.roof, 28));
+    roof.addColorStop(0.46, p.roof);
+    roof.addColorStop(1, p.edge);
+
+    drawTopDownBlock(x, y, w, h, Math.min(18, w / 8, h / 8), roof, "rgba(255,255,255,0.18)", 1.25);
+    drawTopDownBlock(x + 7, y + 7, w - 14, h - 14, Math.min(13, w / 10, h / 10), "rgba(255,255,255,0.026)", "rgba(255,255,255,0.09)", 1);
+
+    roundedRect(x + 1.5, y + 1.5, w - 3, h - 3, Math.min(16, w / 9, h / 9));
+    ctx.strokeStyle = colorWithAlpha(p.accent, 0.32);
+    ctx.lineWidth = 1;
+    ctx.stroke();
+}
+
+function drawBuilding25DShell(x, y, w, h, p, z) {
+    const roofY = y - z;
+    const r = Math.min(18, w / 8, h / 8);
+
+    ctx.save();
+
+    // Общая падающая тень вправо-вниз. Один слой, чтобы не было ощущения дубля здания.
+    const sh = ctx.createLinearGradient(x + 8, y + h * 0.25, x + w + z * 0.95, y + h + z * 0.50);
+    sh.addColorStop(0, "rgba(0,0,0,0.20)");
+    sh.addColorStop(1, "rgba(0,0,0,0.02)");
+    roundedRect(x + z * 0.30, y + z * 0.28, w + z * 0.34, h + z * 0.20, r + 5);
+    ctx.fillStyle = sh;
+    ctx.fill();
+
+    // Нижний/южный фасад.
+    const front = ctx.createLinearGradient(x, roofY + h * 0.65, x, y + h);
+    front.addColorStop(0, lightenColor(p.edge, 8));
+    front.addColorStop(1, "rgba(8,12,18,0.98)");
+    ctx.beginPath();
+    ctx.moveTo(x + r * 0.55, roofY + h);
+    ctx.lineTo(x + w - r * 0.55, roofY + h);
+    ctx.lineTo(x + w - r * 0.55, y + h);
+    ctx.lineTo(x + r * 0.55, y + h);
+    ctx.closePath();
+    ctx.fillStyle = front;
+    ctx.fill();
+
+    // Правый/восточный фасад чуть светлее, чтобы читался объем.
+    const side = ctx.createLinearGradient(x + w, roofY, x + w, y + h);
+    side.addColorStop(0, lightenColor(p.edge, 18));
+    side.addColorStop(1, "rgba(13,18,25,0.98)");
+    ctx.beginPath();
+    ctx.moveTo(x + w, roofY + r * 0.55);
+    ctx.lineTo(x + w, roofY + h - r * 0.55);
+    ctx.lineTo(x + w, y + h - r * 0.55);
+    ctx.lineTo(x + w, y + r * 0.55);
+    ctx.closePath();
+    ctx.fillStyle = side;
+    ctx.fill();
+
+    // Линии этажей на фасаде — дешевый, но хорошо читаемый 2.5D-эффект.
+    ctx.strokeStyle = "rgba(255,255,255,0.075)";
+    ctx.lineWidth = 1;
+    const floors = Math.max(2, Math.min(6, Math.floor(z / 10)));
+    for (let i = 1; i < floors; i++) {
+        const yy = roofY + h + (z / floors) * i;
+        ctx.beginPath();
+        ctx.moveTo(x + 8, yy);
+        ctx.lineTo(x + w - 8, yy);
+        ctx.stroke();
+    }
+
+    // Светящиеся окна на видимом фасаде.
+    const winCols = Math.max(3, Math.min(8, Math.floor(w / 34)));
+    for (let i = 0; i < winCols; i++) {
+        const wx = x + 12 + i * ((w - 24) / winCols);
+        for (let f = 0; f < Math.min(4, floors); f++) {
+            const wy = roofY + h + 7 + f * 10;
+            if (wy > y + h - 8) continue;
+            drawTopDownBlock(wx, wy, Math.max(7, w / winCols * 0.36), 4, 2, (i + f) % 3 === 0 ? colorWithAlpha(p.accent, 0.35) : "rgba(255,255,255,0.12)", null);
+        }
+    }
+
+    drawRoofSurface25D(x, roofY, w, h, p);
+    ctx.restore();
+
+    return roofY;
+}
+
 function drawRoofLabel(x, y, w, h, text, accent, yRatio = 0.65) {
     ctx.save();
     const safeText = String(text || "").toUpperCase();
@@ -3778,21 +3882,31 @@ function drawStyledBuilding(b) {
     const w = b.w;
     const h = b.h;
 
-    if (x + w < -360 || y + h < -180 || x > canvas.width + 360 || y > canvas.height + 180) return;
-
     const p = buildingPalette(b.name, b.color);
+    const z = LIFE_CITY_25D_ENABLED ? getBuilding25DHeight(b, p) : 0;
+
+    if (x + w < -380 || y + h < -220 || x > canvas.width + 380 || y - z > canvas.height + 220) return;
 
     ctx.save();
-    drawRoofBase(x, y, w, h, p);
-    drawBuildingTypeDetails(x, y, w, h, p);
-    drawTopDownEntrance(x, y, w, h, p.accent);
-    drawRoofLabel(x, y, w, h, p.label, p.accent, p.labelY);
+
+    const roofY = LIFE_CITY_25D_ENABLED
+        ? drawBuilding25DShell(x, y, w, h, p, z)
+        : (drawRoofBase(x, y, w, h, p), y);
+
+    // Все декоративные детали рисуются на крыше, а физический прямоугольник здания остается прежним.
+    drawBuildingTypeDetails(x, roofY, w, h, p);
+    drawTopDownEntrance(x, roofY, w, h, p.accent);
+    drawRoofLabel(x, roofY, w, h, p.label, p.accent, p.labelY);
 
     if (isDevOptionOn("editBuildings") && selectedBuilding === b) {
         ctx.strokeStyle = UI.yellow;
         ctx.lineWidth = 3;
         roundedRect(x - 3, y - 3, w + 6, h + 6, Math.min(18, w / 7, h / 7));
         ctx.stroke();
+        ctx.fillStyle = "rgba(255,221,87,0.80)";
+        ctx.font = "bold 11px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(`2.5D высота: ${z}px`, x + w / 2, y + h + 16);
     }
     ctx.restore();
 }
@@ -7315,8 +7429,9 @@ for (let y = labelStartY; y <= labelEndY; y += labelStep) {
 const activeRecyclingFactory = ensureRecyclingFactoryOnMap();
 drawRecyclingFactoryMapZone(activeRecyclingFactory);
 
-    // здания — стилизованная отрисовка без изменения размеров и коллизий
-for (let b of buildings) {
+    // здания — 2.5D отрисовка. Сортировка по нижней Y-точке убирает визуальные наложения.
+const buildingsByDepth = [...buildings].sort((a, b) => (a.y + a.h) - (b.y + b.h));
+for (let b of buildingsByDepth) {
     drawStyledBuilding(b);
 }
 
