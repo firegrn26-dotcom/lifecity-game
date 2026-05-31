@@ -2868,25 +2868,122 @@ function drawVisualOverhaulV2Screen() {
 }
 
 
+function getRoadColors25D(road) {
+    if (road.type === "highway") {
+        return { asphalt: "#202428", edgeDark: "#11161a", edgeLight: "#6f7478", sidewalk: "#3a3f43", curb: "#8a8e91" };
+    }
+    if (road.type === "avenue") {
+        return { asphalt: "#262a2e", edgeDark: "#151a1e", edgeLight: "#777b7f", sidewalk: "#3b4044", curb: "#8f9396" };
+    }
+    if (road.type === "lane") {
+        return { asphalt: "#2b2f32", edgeDark: "#181d20", edgeLight: "#696e72", sidewalk: "#34393d", curb: "#7d8286" };
+    }
+    return { asphalt: "#292d31", edgeDark: "#171c20", edgeLight: "#73777b", sidewalk: "#383d41", curb: "#858a8d" };
+}
+
+function drawRoadIntersections25D() {
+    // Перекрёстки рисуются отдельными площадками, чтобы дороги выглядели цельной 2.5D-сеткой,
+    // а не набором наложенных толстых линий.
+    const done = new Set();
+    for (let i = 0; i < roads.length; i++) {
+        const r1 = roads[i];
+        forEachRoadSegment(r1, (a, b) => {
+            const h1 = Math.abs(a.y - b.y) < 0.01;
+            const v1 = Math.abs(a.x - b.x) < 0.01;
+            if (!h1 && !v1) return;
+            for (let j = i + 1; j < roads.length; j++) {
+                const r2 = roads[j];
+                forEachRoadSegment(r2, (c, d) => {
+                    const h2 = Math.abs(c.y - d.y) < 0.01;
+                    const v2 = Math.abs(c.x - d.x) < 0.01;
+                    if (!((h1 && v2) || (v1 && h2))) return;
+                    const ix = h1 ? c.x : a.x;
+                    const iy = h1 ? a.y : c.y;
+                    const minX1 = Math.min(a.x, b.x), maxX1 = Math.max(a.x, b.x);
+                    const minY1 = Math.min(a.y, b.y), maxY1 = Math.max(a.y, b.y);
+                    const minX2 = Math.min(c.x, d.x), maxX2 = Math.max(c.x, d.x);
+                    const minY2 = Math.min(c.y, d.y), maxY2 = Math.max(c.y, d.y);
+                    if (ix < minX1 || ix > maxX1 || iy < minY1 || iy > maxY1 || ix < minX2 || ix > maxX2 || iy < minY2 || iy > maxY2) return;
+                    const key = `${Math.round(ix)}:${Math.round(iy)}`;
+                    if (done.has(key)) return;
+                    done.add(key);
+                    const pad = Math.max(r1.width, r2.width) * 0.62;
+                    const x = ix - camera.x;
+                    const y = iy - camera.y;
+                    ctx.save();
+                    roundedRect(x - pad - 16, y - pad - 16, pad * 2 + 32, pad * 2 + 32, 18);
+                    ctx.fillStyle = "rgba(16,20,23,0.52)";
+                    ctx.fill();
+                    roundedRect(x - pad, y - pad, pad * 2, pad * 2, 14);
+                    ctx.fillStyle = "#292d31";
+                    ctx.fill();
+                    ctx.strokeStyle = "rgba(255,255,255,0.10)";
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    ctx.restore();
+                });
+            }
+        });
+    }
+}
+
+function drawRoadCurbHighlights25D(road) {
+    // Верхняя светлая и нижняя темная кромки дают дорогам толщину без изменения коллизий.
+    const c = getRoadColors25D(road);
+    forEachRoadSegment(road, (a, b) => {
+        if (!isAxisAlignedSegment(a, b)) return;
+        const horizontal = Math.abs(a.y - b.y) < 0.01;
+        const edge = road.width / 2 + 4;
+        if (horizontal) {
+            drawBrokenSegmentLine(a, b, -edge, road, "rgba(255,255,255,0.22)", 3, null);
+            drawBrokenSegmentLine(a, b, edge, road, "rgba(0,0,0,0.30)", 4, null);
+            drawBrokenSegmentLine(a, b, -edge - 9, road, c.curb, 3, null);
+            drawBrokenSegmentLine(a, b, edge + 9, road, "#1b2024", 3, null);
+        } else {
+            drawBrokenSegmentLine(a, b, -edge, road, "rgba(255,255,255,0.18)", 3, null);
+            drawBrokenSegmentLine(a, b, edge, road, "rgba(0,0,0,0.32)", 4, null);
+            drawBrokenSegmentLine(a, b, -edge - 9, road, c.curb, 3, null);
+            drawBrokenSegmentLine(a, b, edge + 9, road, "#1b2024", 3, null);
+        }
+    });
+}
+
 function drawMegaCityRoads() {
-    // Земля/асфальтовая основа
-    ctx.fillStyle = "#101519";
+    // Земля с легкой глубиной вместо плоского однотонного фона.
+    const ground = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    ground.addColorStop(0, "#11181b");
+    ground.addColorStop(0.55, "#0f1518");
+    ground.addColorStop(1, "#0b1113");
+    ctx.fillStyle = ground;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Крупные зоны под застройку видны только в dev-режиме через слой районов.
     drawBuildingZones();
-
-    // Парки и газоны не пересекаются со зданиями.
     for (let p of parks) drawPark(p);
 
-    // Тротуарная подложка: достаточно узкая, чтобы оставлять большие зоны под здания.
-    for (let road of roads) drawPolyline(road.points, road.width + 24, "#34383c");
-    // Тонкий объёмный бордюр: тень + верхняя кромка.
-    for (let road of roads) drawPolyline(road.points, road.width + 8, "#22262a");
-    for (let road of roads) drawPolyline(road.points, road.width + 4, "#73777b");
-    // Полотно дороги
-    for (let road of roads) drawPolyline(road.points, road.width, road.type === "highway" ? "#24272b" : "#2c2f33");
-    // Разметка прерывается на перекрёстках и продолжается после них.
+    // Слой 1: широкая тень дороги и тротуарная плита.
+    for (let road of roads) {
+        const c = getRoadColors25D(road);
+        drawPolyline(road.points, road.width + 38, "rgba(0,0,0,0.24)");
+        drawPolyline(road.points, road.width + 30, c.sidewalk);
+    }
+
+    // Слой 2: бордюр как физическая толщина дороги.
+    for (let road of roads) {
+        const c = getRoadColors25D(road);
+        drawPolyline(road.points, road.width + 16, c.edgeDark);
+        drawPolyline(road.points, road.width + 10, c.edgeLight);
+        drawPolyline(road.points, road.width + 4, "rgba(255,255,255,0.08)");
+    }
+
+    drawRoadIntersections25D();
+
+    // Слой 3: асфальт.
+    for (let road of roads) {
+        const c = getRoadColors25D(road);
+        drawPolyline(road.points, road.width, c.asphalt);
+    }
+
+    for (let road of roads) drawRoadCurbHighlights25D(road);
     for (let road of roads) drawRoadMarkings(road);
     drawVisualOverhaulV2WorldPreBuildings();
 }
@@ -3876,6 +3973,81 @@ function drawBuildingTypeDetails(x, y, w, h, p) {
     ctx.restore();
 }
 
+
+function drawRoofGeometry25D(x, y, w, h, p) {
+    // Нормальная крыша: скаты/парапеты/техблоки вместо плоского прямоугольника.
+    ctx.save();
+    const inset = Math.max(8, Math.min(18, Math.min(w, h) * 0.09));
+
+    if (p.type === "home" || p.type === "city" || p.type === "bank") {
+        // Двускатная/административная крыша с центральным ребром.
+        ctx.beginPath();
+        ctx.moveTo(x + inset, y + inset);
+        ctx.lineTo(x + w / 2, y + h * 0.42);
+        ctx.lineTo(x + w - inset, y + inset);
+        ctx.strokeStyle = "rgba(255,255,255,0.16)";
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x + w / 2, y + h * 0.42);
+        ctx.lineTo(x + w / 2, y + h - inset);
+        ctx.strokeStyle = "rgba(0,0,0,0.20)";
+        ctx.stroke();
+    } else if (p.type === "shop" || p.type === "cafe" || p.type === "pharmacy") {
+        // Коммерческая плоская крыша с высоким парапетом.
+        drawTopDownBlock(x + inset, y + inset, w - inset * 2, h - inset * 2, 8, "rgba(255,255,255,0.045)", colorWithAlpha(p.accent, 0.20), 1);
+        ctx.strokeStyle = "rgba(255,255,255,0.12)";
+        ctx.beginPath();
+        ctx.moveTo(x + inset, y + h * 0.33);
+        ctx.lineTo(x + w - inset, y + h * 0.33);
+        ctx.stroke();
+    } else if (p.type === "service" || p.type === "recyclingFactory") {
+        // Промышленная крыша: ребра металлопрофиля.
+        ctx.strokeStyle = "rgba(255,255,255,0.10)";
+        ctx.lineWidth = 1;
+        const ribs = Math.max(4, Math.min(10, Math.floor(w / 45)));
+        for (let i = 1; i < ribs; i++) {
+            const rx = x + (w / ribs) * i;
+            ctx.beginPath();
+            ctx.moveTo(rx, y + 10);
+            ctx.lineTo(rx - 10, y + h - 10);
+            ctx.stroke();
+        }
+    } else {
+        drawTopDownBlock(x + inset, y + inset, w - inset * 2, h - inset * 2, 8, "rgba(255,255,255,0.035)", "rgba(255,255,255,0.08)", 1);
+    }
+    ctx.restore();
+}
+
+function drawBuildingFootprint25D(x, y, w, h, p) {
+    // Плитка/дворик вокруг здания отделяет его от дороги и убирает ощущение плоского блока.
+    ctx.save();
+    const pad = Math.max(6, Math.min(16, Math.min(w, h) * 0.08));
+    drawTopDownBlock(x - pad, y - pad, w + pad * 2, h + pad * 2, Math.min(20, pad + 8), "rgba(38,43,45,0.42)", "rgba(255,255,255,0.055)", 1);
+    ctx.strokeStyle = colorWithAlpha(p.accent, 0.10);
+    ctx.lineWidth = 1;
+    roundedRect(x - pad + 4, y - pad + 4, w + pad * 2 - 8, h + pad * 2 - 8, Math.min(16, pad + 5));
+    ctx.stroke();
+    ctx.restore();
+}
+
+function drawFacadeEntrance25D(x, baseY, w, h, z, p) {
+    // Вход теперь на видимом южном фасаде, а не просто на крыше.
+    ctx.save();
+    const ew = Math.max(28, Math.min(68, w * 0.24));
+    const eh = Math.max(14, Math.min(26, z * 0.36));
+    const ex = x + w / 2 - ew / 2;
+    const ey = baseY + h - eh - 2;
+    drawTopDownBlock(ex, ey, ew, eh, 5, "rgba(3,7,12,0.82)", colorWithAlpha(p.accent, 0.70), 1.2);
+    ctx.fillStyle = "rgba(255,255,255,0.16)";
+    ctx.fillRect(ex + ew / 2 - 1, ey + 3, 2, eh - 6);
+
+    // Маленькая дорожка от входа к тротуару.
+    const pathW = Math.max(24, ew * 0.56);
+    drawTopDownBlock(x + w / 2 - pathW / 2, baseY + h + 2, pathW, 18, 4, "rgba(85,91,92,0.72)", "rgba(255,255,255,0.10)", 1);
+    ctx.restore();
+}
+
 function drawStyledBuilding(b) {
     const x = b.x - camera.x;
     const y = b.y - camera.y;
@@ -3889,13 +4061,17 @@ function drawStyledBuilding(b) {
 
     ctx.save();
 
+    if (LIFE_CITY_25D_ENABLED) drawBuildingFootprint25D(x, y, w, h, p);
+
     const roofY = LIFE_CITY_25D_ENABLED
         ? drawBuilding25DShell(x, y, w, h, p, z)
         : (drawRoofBase(x, y, w, h, p), y);
 
     // Все декоративные детали рисуются на крыше, а физический прямоугольник здания остается прежним.
+    drawRoofGeometry25D(x, roofY, w, h, p);
     drawBuildingTypeDetails(x, roofY, w, h, p);
-    drawTopDownEntrance(x, roofY, w, h, p.accent);
+    if (LIFE_CITY_25D_ENABLED) drawFacadeEntrance25D(x, y, w, h, z, p);
+    else drawTopDownEntrance(x, roofY, w, h, p.accent);
     drawRoofLabel(x, roofY, w, h, p.label, p.accent, p.labelY);
 
     if (isDevOptionOn("editBuildings") && selectedBuilding === b) {
