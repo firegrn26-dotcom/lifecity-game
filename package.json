@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check local-server.js && node --check public/game.js"
+    "check": "node --check server.js && node --check local-server.js && node --check public/game.js && node --check public/js/core.js && node --check public/js/player.js && node --check public/js/network.js && node --check public/js/map.js && node --check public/js/jobs.js && node --check public/js/effects.js && node --check public/js/buildings.js && node --check public/js/ui.js && node --check public/js/render-loop.js"
   },
   "keywords": [],
   "author": "",

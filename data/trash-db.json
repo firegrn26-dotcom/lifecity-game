@@ -1,32 +1,6 @@
 {
-    "version": 1,
-    "nextTrashId": 22,
-    "lastTrashSpawn": 1780244937707,
-    "items": {
-        "trash_4": {
-            "id": "trash_4",
-            "x": 735,
-            "y": -208
-        },
-        "trash_16": {
-            "id": "trash_16",
-            "x": 207,
-            "y": -227
-        },
-        "trash_19": {
-            "id": "trash_19",
-            "x": 1097,
-            "y": -49
-        },
-        "trash_20": {
-            "id": "trash_20",
-            "x": 323,
-            "y": 260
-        },
-        "trash_21": {
-            "id": "trash_21",
-            "x": -90,
-            "y": 447
-        }
-    }
+  "version": 1,
+  "nextTrashId": 1,
+  "lastTrashSpawn": 0,
+  "items": {}
 }
