@@ -1,0 +1,18 @@
+{
+  "name": "lifecity",
+  "version": "1.0.0",
+  "description": "LifeCity local multiplayer server and client",
+  "main": "local-server.js",
+  "scripts": {
+    "start": "node local-server.js",
+    "check": "node --check local-server.js && node --check public/game.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.2.1",
+    "socket.io": "^4.8.3"
+  }
+}

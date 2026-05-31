@@ -1,0 +1,96 @@
+{
+    "version": 1,
+    "nextPlayerId": 2,
+    "accounts": {
+        "firegreen": {
+            "id": 1,
+            "login": "firegreen",
+            "passwordSalt": "e3067da2fc833d004d1ea26d8e4027a0",
+            "passwordHash": "4d4d5d14670e5652cde3f65e774a21ccc508ba9d904f6781c40b7e3e7a9e6621",
+            "character": {
+                "playerId": 1,
+                "login": "firegreen",
+                "name": "111",
+                "x": 625.4696986456187,
+                "y": 508.70064241310575,
+                "energy": 100,
+                "money": 1053,
+                "level": 3,
+                "xp": 45,
+                "job": "Дворник",
+                "cleanerOnShift": true,
+                "standardAvatar": {
+                    "gender": "male",
+                    "bodyType": "normal",
+                    "hairStyle": "short",
+                    "clothingStyle": "street",
+                    "clothingColor": "blue",
+                    "setupDone": true
+                },
+                "jobStats": {
+                    "Дворник": {
+                        "level": 3,
+                        "xp": 275
+                    },
+                    "Санитар": {
+                        "level": 1,
+                        "xp": 0
+                    }
+                },
+                "inventory": {
+                    "slots": 10,
+                    "trash": 1,
+                    "trashMax": 10,
+                    "baseSlots": 10,
+                    "backpackBonus": 0,
+                    "trashSlot": 0,
+                    "items": [
+                        {
+                            "type": "trash",
+                            "name": "Мусор",
+                            "count": 1,
+                            "max": 10
+                        },
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                    ]
+                },
+                "hasBackpack": false,
+                "avatar": {
+                    "gender": "male",
+                    "bodyType": "normal",
+                    "hairStyle": "short",
+                    "clothingStyle": "worker",
+                    "clothingColor": "orange",
+                    "setupDone": true
+                },
+                "lastLogoutAt": 1780244811145,
+                "lastLogoutPosition": {
+                    "x": 625,
+                    "y": 509
+                },
+                "createdAt": 1780230472701,
+                "updatedAt": 1780245035116,
+                "angle": 8.008536557762945,
+                "targetAngle": 1.5707963267948966,
+                "velX": 0,
+                "velY": 0,
+                "moving": false,
+                "cleaningTrashId": null,
+                "cleaningStartedAt": 0,
+                "cleaningUntil": 0,
+                "jobLevel": 3,
+                "jobXP": 275
+            },
+            "createdAt": 1780230472701,
+            "updatedAt": 1780245030919
+        }
+    }
+}
