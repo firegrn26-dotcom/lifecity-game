@@ -2,10 +2,10 @@
   "name": "lifecity",
   "version": "1.0.0",
   "description": "LifeCity local multiplayer server and client",
-  "main": "local-server.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node local-server.js",
-    "check": "node --check local-server.js && node --check public/game.js"
+    "start": "node server.js",
+    "check": "node --check server.js && node --check local-server.js && node --check public/game.js"
   },
   "keywords": [],
   "author": "",

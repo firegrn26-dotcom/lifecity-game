@@ -1039,10 +1039,13 @@ io.on("connection", (socket) => {
     }
 
     socket.on("register", (data) => {
-        const login = cleanLogin(data?.login);
+        // Поддерживаем оба окна авторизации:
+        // canvas-форма отправляет nickname/passwordRepeat,
+        // HTML-форма из последних патчей отправляла nick/name/repeat.
+        const login = cleanLogin(data?.login || data?.username);
         const password = cleanPassword(data?.password);
-        const passwordRepeat = cleanPassword(data?.passwordRepeat);
-        const nickname = cleanNickname(data?.nickname);
+        const passwordRepeat = cleanPassword(data?.passwordRepeat ?? data?.repeat ?? data?.confirmPassword ?? data?.password);
+        const nickname = cleanNickname(data?.nickname ?? data?.nick ?? data?.name);
 
         if (login.length < 3 || password.length < 3) {
             socket.emit("authError", "Логин и пароль минимум 3 символа");
