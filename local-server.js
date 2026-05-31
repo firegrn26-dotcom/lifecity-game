@@ -1731,8 +1731,8 @@ process.on("SIGTERM", () => {
 // ===============================
 const PORT = Number(process.env.PORT) || 3000;
 
-server.listen(PORT, "127.0.0.1", () => {
-    console.log("🖥️ Local Life City server running:");
-    console.log("http://localhost:" + PORT);
-    console.log("💾 Character DB:", DB_FILE);
+const PORT = process.env.PORT || 3000;
+
+server.listen(PORT, "0.0.0.0", () => {
+    console.log(`LifeCity server started on port ${PORT}`);
 });
