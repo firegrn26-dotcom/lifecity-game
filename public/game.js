@@ -1770,6 +1770,13 @@ let buildings = [
     { name: "Полиция", x: 1600, y: 210, w: 235, h: 165, color: "#1f4d96" },
 ];
 
+// Защита от случайного дубля здания при будущих правках карты.
+// Ключ учитывает название и координаты, чтобы один и тот же дом не рисовался слоями.
+buildings = buildings.filter((b, index, arr) => {
+    const key = `${b.name}|${b.x}|${b.y}|${b.w}|${b.h}`;
+    return arr.findIndex(item => `${item.name}|${item.x}|${item.y}|${item.w}|${item.h}` === key) === index;
+});
+
 // ===============================
 // 🧱 COLLISION CHECK
 // ===============================
@@ -2739,35 +2746,6 @@ function drawCityPropsV2() {
     ctx.restore();
 }
 
-function drawBuildingWindowGlowV2(b) {
-    const x = b.x - camera.x;
-    const y = b.y - camera.y;
-    const cols = Math.max(2, Math.floor(b.w / 42));
-    const rows = Math.max(2, Math.floor(b.h / 38));
-    ctx.save();
-    ctx.shadowColor = "rgba(255,207,112,0.45)";
-    ctx.shadowBlur = 9;
-    for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-            if ((r * 7 + c * 11 + b.name.length) % 4 === 0) continue;
-            const wx = x + 18 + c * ((b.w - 36) / Math.max(1, cols - 1));
-            const wy = y + 18 + r * ((b.h - 36) / Math.max(1, rows - 1));
-            const warm = (r + c + b.name.length) % 3 !== 0;
-            ctx.fillStyle = warm ? "rgba(255,213,126,0.78)" : "rgba(119,210,255,0.58)";
-            roundedRect(wx - 4, wy - 3, 8, 6, 2);
-            ctx.fill();
-        }
-    }
-    ctx.restore();
-}
-
-function drawBuildingsGlowLayerV2() {
-    for (const b of buildings) {
-        if (!isOnScreenWorld(b.x + b.w / 2, b.y + b.h / 2, 300)) continue;
-        drawBuildingWindowGlowV2(b);
-    }
-}
-
 function drawAmbientParticlesV2() {
     visualFXV2.tick += 1;
     ctx.save();
@@ -2828,9 +2806,6 @@ function drawVisualOverhaulV2WorldPreBuildings() {
     drawCityPropsV2();
 }
 
-function drawVisualOverhaulV2WorldPostBuildings() {
-    drawBuildingsGlowLayerV2();
-}
 
 function drawVisualOverhaulV2Screen() {
     drawAmbientParticlesV2();
@@ -2838,13 +2813,6 @@ function drawVisualOverhaulV2Screen() {
     drawCinematicOverlayV2();
 }
 
-function drawRoadsideLights() {
-    // Освещение удалены из карты.
-}
-
-function drawCityDecor() {
-    // Декоративные знаки и таблички удалены из карты.
-}
 
 function drawMegaCityRoads() {
     // Земля/асфальтовая основа
@@ -3278,13 +3246,13 @@ function buildingPalette(name, fallback) {
 }
 
 function drawTopDownBuildingGlow(x, y, w, h, accent) {
+    // Один аккуратный контур без тяжелого свечения. Так здания не выглядят
+    // наложенными друг на друга и не дублируют собственные окна.
     ctx.save();
-    ctx.shadowColor = accent;
-    ctx.shadowBlur = 16;
-    ctx.globalAlpha = 0.22;
-    roundedRect(x - 2, y - 2, w + 4, h + 4, Math.min(18, w / 7, h / 7));
+    ctx.globalAlpha = 0.12;
+    roundedRect(x - 1, y - 1, w + 2, h + 2, Math.min(18, w / 7, h / 7));
     ctx.strokeStyle = accent;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1;
     ctx.stroke();
     ctx.restore();
 }
@@ -3293,8 +3261,8 @@ function drawRoofBase(x, y, w, h, p) {
     ctx.save();
 
     // Нижняя тень, чтобы здание читалось сверху и не казалось плоским.
-    ctx.fillStyle = "rgba(0,0,0,0.34)";
-    roundedRect(x + 5, y + 7, w, h, Math.min(18, w / 7, h / 7));
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    roundedRect(x + 3, y + 4, w, h, Math.min(18, w / 7, h / 7));
     ctx.fill();
 
     drawTopDownBuildingGlow(x, y, w, h, p.accent);
@@ -7135,7 +7103,6 @@ for (let y = labelStartY; y <= labelEndY; y += labelStep) {
 for (let b of buildings) {
     drawStyledBuilding(b);
 }
-drawVisualOverhaulV2WorldPostBuildings();
 
     // игроки
     for (let id in players) {
