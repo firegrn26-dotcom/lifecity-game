@@ -1319,3 +1319,11 @@ button.auth-button:active, .auth-button:active {
 <!-- LifeCity clean auth rewrite active -->
 </body>
 </html>
+<!-- LifeCity fix: скрытое окно авторизации не должно перехватывать клики canvas -->
+<style>
+#lc-auth-root.lc-auth-hidden,
+#lc-auth-root.lc-auth-hidden * {
+    pointer-events: none !important;
+    visibility: hidden !important;
+}
+</style>

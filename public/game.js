@@ -1155,14 +1155,8 @@ canvas.addEventListener("click", (e) => {
         return;
     }
 
-    if (handleChatClick(mx, my)) {
-        return;
-    }
-
-    if (handleDevMenuClick(mx, my)) {
-        return;
-    }
-
+    // Модальное окно внешности находится поверх всего HUD,
+    // поэтому его кнопки должны обрабатываться первыми.
     if (avatarEditorOpen) {
         if (handleAvatarEditorClick(mx, my)) return;
         if (avatarEditorRequired) return;
@@ -1170,6 +1164,14 @@ canvas.addEventListener("click", (e) => {
 
     if (shopOpen) {
         if (handleShopClick(mx, my)) return;
+    }
+
+    if (handleChatClick(mx, my)) {
+        return;
+    }
+
+    if (handleDevMenuClick(mx, my)) {
+        return;
     }
 
     // Сначала проверяем окно подтверждения работы
@@ -7598,7 +7600,15 @@ function lcUpdateAuthWindowVisibility() {
         if (typeof isLoggedIn !== "undefined" && isLoggedIn) shouldShow = false;
         if (typeof myPlayer !== "undefined" && myPlayer && (myPlayer.id || myPlayer.name) && typeof gameState !== "undefined" && gameState === "game") shouldShow = false;
     } catch (e) {}
+
     root.classList.toggle("lc-auth-hidden", !shouldShow);
+
+    // Важно: после входа DOM-окно авторизации не должно оставаться невидимой
+    // прослойкой поверх canvas. Иначе оно перехватывает клики по кнопкам
+    // изменения персонажа и другим canvas-окнам.
+    root.style.display = shouldShow ? "flex" : "none";
+    root.style.visibility = shouldShow ? "visible" : "hidden";
+    root.style.pointerEvents = shouldShow ? "none" : "none";
 }
 
 window.addEventListener("DOMContentLoaded", () => {
