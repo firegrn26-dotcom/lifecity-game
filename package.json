@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check local-server.js && node --check public/game.js && node --check public/js/core.js && node --check public/js/player.js && node --check public/js/network.js && node --check public/js/map.js && node --check public/js/jobs.js && node --check public/js/effects.js && node --check public/js/buildings.js && node --check public/js/ui.js && node --check public/js/render-loop.js"
+    "check": "node --check server.js && node --check local-server.js && node --check public/game.js && node --check public/js/core.js && node --check public/js/player.js && node --check public/js/network.js && node --check public/js/city-layout.js && node --check public/js/map.js && node --check public/js/jobs-system.js && node --check public/js/roads-render.js && node --check public/js/effects.js && node --check public/js/buildings.js && node --check public/js/ui-utils.js && node --check public/js/ui-jobs.js && node --check public/js/ui-dev.js && node --check public/js/ui-avatar-shop.js && node --check public/js/ui-profile.js && node --check public/js/ui-chat.js && node --check public/js/ui-inventory.js && node --check public/js/ui-auth.js && node --check public/js/render-loop.js"
   },
   "keywords": [],
   "author": "",
