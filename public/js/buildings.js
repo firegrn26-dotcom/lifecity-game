@@ -81,16 +81,11 @@ const LIFE_CITY_BUILDING_ROOFS_ENABLED = false;
 
 
 function drawRoofSurface25D(x, y, w, h, p) {
-    // V1.6.10: настоящая крыша полностью удалена.
-    // Рисуем только приглушенную верхнюю плоскость корпуса, чтобы здание не исчезало.
-    if (!LIFE_CITY_BUILDING_ROOFS_ENABLED) {
-        const body = ctx.createLinearGradient(x, y, x + w, y + h);
-        body.addColorStop(0, lightenColor(p.wall || p.edge, 14));
-        body.addColorStop(1, darkenColor(p.wall || p.edge, 18));
-        drawTopDownBlock(x, y, w, h, Math.min(12, w / 10, h / 10), body, "rgba(255,255,255,0.07)", 1);
-        return;
-    }
+    // V1.6.11: верхняя плоскость здания полностью отключена.
+    // Это убирает визуальную "крышу", которая раньше была частью корпуса.
+    return;
 }
+
 
 function drawBuilding25DShell(x, y, w, h, p, z) {
     const roofY = y - z;
@@ -667,208 +662,32 @@ function drawFacadeEntrance25D(x, baseY, w, h, z, p) {
 }
 
 function drawBuildingTypeDetails(x, y, w, h, p) {
+    // V1.6.11: все элементы, которые читались как крыша/верхняя площадка, отключены.
+    // Оставляем только назначение здания через фасадную вывеску или символ.
     ctx.save();
-    const t = performance.now() / 1000;
 
-    if (p.type === "home") {
-        // Жилой дом: секционный многоквартирник с подъездами, шахтами и живыми окнами.
-        const sections = 3;
-        for (let i = 0; i < sections; i++) {
-            const sx = x + 8 + i * ((w - 16) / sections);
-            const sw = (w - 22) / sections;
-            drawTopDownBlock(sx, y + h * 0.12, sw, h * 0.70, 8, "rgba(255,255,255,0.035)", "rgba(255,255,255,0.09)", 1);
-            drawRoofUnit(sx + sw * 0.32, y + h * 0.68, sw * 0.36, h * 0.10, p.accent, 0.65, 5);
-            for (let r = 0; r < 4; r++) {
-                for (let c = 0; c < 2; c++) {
-                    const a = 0.10 + Math.max(0, Math.sin(t * 0.75 + i * 1.3 + r * 0.7 + c)) * 0.20;
-                    drawTopDownBlock(sx + sw * (0.18 + c * 0.42), y + h * (0.18 + r * 0.12), sw * 0.18, h * 0.055, 3, `rgba(255,226,146,${a})`, "rgba(255,255,255,0.08)", 1);
-                }
-            }
-        }
-        drawTopDownBlock(x + w * 0.08, y + h * 0.84, w * 0.84, h * 0.055, 5, "rgba(2,8,14,0.32)", colorWithAlpha(p.accent, 0.20), 1);
-    }
-
-    if (p.type === "cafe") {
-        // Кафе: терраса, полосатый навес, столики и теплый пар.
-        for (let i = 0; i < 7; i++) {
-            ctx.fillStyle = i % 2 === 0 ? "rgba(255,201,87,0.82)" : "rgba(255,255,255,0.62)";
-            ctx.fillRect(x + 4 + i * ((w - 8) / 7), y + h * 0.13, (w - 8) / 7 + 1, h * 0.12);
-        }
-        drawTopDownBlock(x + w * 0.12, y + h * 0.42, w * 0.44, h * 0.30, 12, "rgba(80,42,18,0.36)", colorWithAlpha(p.accent, 0.34), 1);
-        for (let i = 0; i < 3; i++) {
-            const cx = x + w * (0.23 + i * 0.13);
-            const cy = y + h * 0.55;
-            ctx.beginPath(); ctx.arc(cx, cy, Math.min(w, h) * 0.045, 0, Math.PI * 2);
-            ctx.fillStyle = "rgba(255,222,150,0.22)"; ctx.fill();
-            ctx.strokeStyle = colorWithAlpha(p.accent, 0.45); ctx.stroke();
-        }
-        drawUniqueSign2_5D(x, y, w, h, p, "КАФЕ");
-    }
-
-    if (p.type === "city") {
-        // Мэрия: центральный корпус, купол, колоннада и флаг.
-        drawTopDownBlock(x + w * 0.13, y + h * 0.18, w * 0.74, h * 0.44, 12, "rgba(216,237,255,0.13)", "rgba(216,237,255,0.32)", 1.3);
-        for (let i = 0; i < 6; i++) {
-            drawRoofUnit(x + w * (0.19 + i * 0.115), y + h * 0.30, w * 0.065, h * 0.24, p.accent, 0.95, 4);
-        }
-        ctx.beginPath();
-        ctx.arc(x + w / 2, y + h * 0.20, Math.min(w, h) * 0.095, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(216,237,255,0.30)"; ctx.fill();
-        ctx.strokeStyle = colorWithAlpha(p.accent, 0.85); ctx.lineWidth = 2; ctx.stroke();
-        ctx.fillStyle = "rgba(255,255,255,0.92)";
-        ctx.fillRect(x + w * 0.82, y + h * 0.12, 3, h * 0.26);
-        ctx.fillStyle = "rgba(255,82,82,0.82)";
-        ctx.fillRect(x + w * 0.835, y + h * 0.13, w * 0.08, h * 0.055);
-        drawUniqueSign2_5D(x, y, w, h, p, "МЭРИЯ");
-    }
-
-    if (p.type === "bank") {
-        // Банк: тяжелая крыша, колонны, золотой сейф и премиальная подсветка.
-        drawTopDownBlock(x + w * 0.12, y + h * 0.15, w * 0.76, h * 0.18, 7, "rgba(255,215,106,0.17)", "rgba(255,215,106,0.46)", 1.2);
-        for (let i = 0; i < 5; i++) {
-            drawRoofUnit(x + w * (0.17 + i * 0.14), y + h * 0.42, w * 0.09, h * 0.27, p.accent, 0.95, 4);
-        }
-        ctx.beginPath();
-        ctx.arc(x + w * 0.82, y + h * 0.55, Math.min(w, h) * 0.08, 0, Math.PI * 2);
-        ctx.strokeStyle = colorWithAlpha(p.accent, 0.9); ctx.lineWidth = 2.5; ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(x + w * 0.82, y + h * 0.55, Math.min(w, h) * 0.035, 0, Math.PI * 2);
-        ctx.fillStyle = colorWithAlpha(p.accent, 0.28); ctx.fill();
-        drawUniqueSign2_5D(x, y, w, h, p, "БАНК");
-    }
-
-    if (p.type === "pharmacy") {
-        // Аптека: чистый медицинский стиль, большой крест и боковые вентиляционные блоки.
-        drawTopDownBlock(x + w * 0.14, y + h * 0.18, w * 0.72, h * 0.50, 12, "rgba(225,255,237,0.08)", colorWithAlpha(p.accent, 0.25), 1);
-        const cx = x + w / 2;
-        const cy = y + h * 0.43;
-        const pulse = 0.75 + Math.sin(t * 2.6) * 0.18;
-        drawTopDownBlock(cx - 9, cy - 32, 18, 64, 5, colorWithAlpha(p.accent, pulse), null);
-        drawTopDownBlock(cx - 33, cy - 9, 66, 18, 5, colorWithAlpha(p.accent, pulse), null);
-        drawRoofUnit(x + w * 0.10, y + h * 0.18, w * 0.16, h * 0.20, p.accent, 0.7, 5);
-        drawRoofUnit(x + w * 0.74, y + h * 0.18, w * 0.16, h * 0.20, p.accent, 0.7, 5);
-        drawUniqueSign2_5D(x, y, w, h, p, "АПТЕКА");
-    }
+    const labels = {
+        home: "ЖИЛОЙ ДОМ",
+        cafe: "КАФЕ",
+        city: "МЭРИЯ",
+        bank: "БАНК",
+        pharmacy: "АПТЕКА",
+        shop: "МАГАЗИН",
+        service: "АВТОСЕРВИС",
+        police: "ПОЛИЦИЯ",
+        factory: "ЗАВОД"
+    };
 
     if (p.type === "trash") {
-        // Мусорка: коммунальный пункт, контейнеры, ограждение, знак переработки.
-        drawTopDownBlock(x + w * 0.10, y + h * 0.16, w * 0.80, h * 0.60, 7, "rgba(10,16,18,0.42)", colorWithAlpha(p.accent, 0.45), 1.2);
-        const bins = ["#6d7a7e", "#4e6b58", "#706a4e"];
-        for (let i = 0; i < 3; i++) {
-            drawTopDownBlock(x + w * (0.18 + i * 0.20), y + h * 0.30, w * 0.15, h * 0.28, 4, bins[i], "rgba(255,255,255,0.16)", 1);
-            ctx.fillStyle = "rgba(0,0,0,0.26)";
-            ctx.fillRect(x + w * (0.18 + i * 0.20), y + h * 0.27, w * 0.15, 4);
-        }
-        ctx.fillStyle = colorWithAlpha(p.accent, 0.9);
-        ctx.font = `bold ${Math.max(13, h * 0.24)}px Arial`;
-        ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText("♻", x + w * 0.78, y + h * 0.47);
+        ctx.fillStyle = colorWithAlpha(p.accent, 0.92);
+        ctx.font = `bold ${Math.max(18, Math.min(w, h) * 0.24)}px Arial`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("♻", x + w * 0.50, y + h * 0.50);
+    } else if (labels[p.type]) {
+        drawUniqueSign2_5D(x, y, w, h, p, labels[p.type]);
     }
 
-    if (p.type === "shop") {
-        // Магазин: широкая витрина, рекламная крыша, товарные секции.
-        for (let i = 0; i < 9; i++) {
-            ctx.fillStyle = i % 2 === 0 ? "rgba(255,212,90,0.84)" : "rgba(64,42,10,0.82)";
-            ctx.fillRect(x + 5 + i * ((w - 10) / 9), y + h * 0.12, (w - 10) / 9 + 1, h * 0.10);
-        }
-        drawTopDownBlock(x + w * 0.10, y + h * 0.55, w * 0.62, h * 0.19, 8, "rgba(95,210,255,0.17)", "rgba(95,210,255,0.38)", 1.2);
-        for (let i = 0; i < 4; i++) {
-            drawTopDownBlock(x + w * (0.16 + i * 0.13), y + h * 0.60, w * 0.08, h * 0.08, 4, `rgba(255,230,120,${0.18 + (i % 2) * 0.10})`, null);
-        }
-        drawRoofUnit(x + w * 0.77, y + h * 0.39, w * 0.14, h * 0.24, p.accent, 0.8, 6);
-        drawUniqueSign2_5D(x, y, w, h, p, "МАГАЗИН");
-    }
-
-    if (p.type === "service") {
-        // Автосервис: большой бокс, ворота, инструменты, знак ключа и сварка.
-        drawTopDownBlock(x + w * 0.08, y + h * 0.28, w * 0.54, h * 0.40, 8, "rgba(5,10,18,0.48)", "rgba(255,255,255,0.15)", 1);
-        for (let i = 1; i < 5; i++) {
-            ctx.strokeStyle = "rgba(255,255,255,0.14)";
-            ctx.beginPath();
-            ctx.moveTo(x + w * 0.10, y + h * (0.28 + i * 0.075));
-            ctx.lineTo(x + w * 0.60, y + h * (0.28 + i * 0.075));
-            ctx.stroke();
-        }
-        drawRoofUnit(x + w * 0.70, y + h * 0.27, w * 0.17, h * 0.30, p.accent, 0.92, 6);
-        ctx.fillStyle = colorWithAlpha(p.accent, 0.9);
-        ctx.font = `bold ${Math.max(16, h * 0.22)}px Arial`;
-        ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText("🔧", x + w * 0.79, y + h * 0.42);
-        const spark = Math.max(0, Math.sin(t * 9));
-        if (spark > 0.70) {
-            ctx.strokeStyle = `rgba(155,225,255,${spark})`;
-            ctx.lineWidth = 1.4;
-            ctx.beginPath();
-            ctx.moveTo(x + w * 0.35, y + h * 0.48); ctx.lineTo(x + w * 0.44, y + h * 0.39);
-            ctx.moveTo(x + w * 0.36, y + h * 0.50); ctx.lineTo(x + w * 0.47, y + h * 0.56);
-            ctx.stroke();
-        }
-        drawUniqueSign2_5D(x, y, w, h, p, "АВТОСЕРВИС");
-    }
-
-    if (p.type === "police") {
-        // Полиция: участок с козырьком, маяками, гербом и служебным стилем.
-        drawTinyWindows(x + w * 0.05, y + h * 0.10, w * 0.90, h * 0.34, 4, 2, p.accent);
-        drawTopDownBlock(x + w * 0.30, y + h * 0.46, w * 0.40, h * 0.22, 11, "rgba(98,202,255,0.16)", colorWithAlpha(p.accent, 0.58), 1.2);
-        ctx.fillStyle = colorWithAlpha(p.accent, 0.96);
-        ctx.font = `bold ${Math.max(18, h / 5)}px Arial`;
-        ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText("★", x + w / 2, y + h * 0.57);
-        const red = 0.35 + Math.max(0, Math.sin(t * 7)) * 0.55;
-        const blue = 0.35 + Math.max(0, Math.sin(t * 7 + Math.PI)) * 0.55;
-        ctx.fillStyle = `rgba(255,72,86,${red})`; ctx.fillRect(x + w * 0.36, y + 8, w * 0.11, 6);
-        ctx.fillStyle = `rgba(98,202,255,${blue})`; ctx.fillRect(x + w * 0.53, y + 8, w * 0.11, 6);
-        drawUniqueSign2_5D(x, y, w, h, p, "ПОЛИЦИЯ");
-    }
-
-    if (p.type === "recyclingFactory") {
-        // Завод: отдельная промплощадка, парковка, трубы, конвейер, силосы, рабочие прессы и дым.
-        drawFactoryParkingAndTrucks(x, y, w, h, p.accent);
-        drawTopDownBlock(x + w * 0.04, y + h * 0.12, w * 0.42, h * 0.50, 14, "rgba(10,19,24,0.55)", "rgba(155,255,108,0.25)", 1.2);
-        drawTopDownBlock(x + w * 0.52, y + h * 0.12, w * 0.40, h * 0.50, 14, "rgba(10,19,24,0.48)", "rgba(255,255,255,0.12)", 1);
-        const beltX = x + w * 0.10, beltY = y + h * 0.31, beltW = w * 0.77, beltH = h * 0.13;
-        drawTopDownBlock(beltX, beltY, beltW, beltH, 8, "rgba(3,8,11,0.74)", "rgba(155,255,108,0.48)", 1.3);
-        ctx.save(); roundedRect(beltX, beltY, beltW, beltH, 8); ctx.clip();
-        for (let i = -50; i < beltW + 70; i += 34) {
-            const bx = beltX + ((i + t * 46) % (beltW + 70)) - 34;
-            ctx.fillStyle = i % 68 === 0 ? "rgba(155,255,108,0.76)" : "rgba(95,180,210,0.65)";
-            ctx.fillRect(bx, beltY + 7, 18, beltH - 14);
-        }
-        ctx.restore();
-        for (let i = 0; i < 3; i++) {
-            drawTopDownBlock(x + w * (0.18 + i * 0.15), y + h * 0.15 + Math.sin(t * 3.2 + i) * 4, w * 0.07, h * 0.10, 5, colorWithAlpha(p.accent, 0.36), colorWithAlpha(p.accent, 0.75), 1);
-        }
-        for (let i = 0; i < 3; i++) {
-            const cx = x + w * (0.60 + i * 0.105), cy = y + h * 0.22;
-            ctx.beginPath(); ctx.arc(cx, cy, Math.min(w, h) * 0.056, 0, Math.PI * 2);
-            ctx.fillStyle = "rgba(210,230,220,0.18)"; ctx.fill();
-            ctx.strokeStyle = colorWithAlpha(p.accent, 0.46 + Math.sin(t * 2 + i) * 0.12); ctx.lineWidth = 2; ctx.stroke();
-        }
-        for (let i = 0; i < 2; i++) {
-            const sx = x + w * (0.79 + i * 0.07), sy = y + h * 0.57;
-            drawTopDownBlock(sx - 13, sy - 13, 26, 26, 8, "rgba(18,25,27,0.96)", "rgba(255,255,255,0.18)", 1);
-            for (let j = 0; j < 9; j++) {
-                const life = ((t * 0.42 + j * 0.115 + i * 0.18) % 1);
-                const puffX = sx + life * 46 + Math.sin(t * 1.5 + j * 1.7 + i) * 9;
-                const puffY = sy - 20 - life * 122;
-                const radius = 8 + life * 27;
-                const alpha = Math.max(0, 0.24 * (1 - life));
-                const g = ctx.createRadialGradient(puffX, puffY, 2, puffX, puffY, radius);
-                g.addColorStop(0, `rgba(218,238,225,${alpha})`);
-                g.addColorStop(0.58, `rgba(174,204,190,${alpha * 0.54})`);
-                g.addColorStop(1, "rgba(174,204,190,0)");
-                ctx.fillStyle = g; ctx.beginPath(); ctx.arc(puffX, puffY, radius, 0, Math.PI * 2); ctx.fill();
-            }
-        }
-        ctx.fillStyle = colorWithAlpha(p.accent, 0.93);
-        ctx.font = `bold ${Math.max(28, h / 5)}px Arial`;
-        ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText("♻", x + w * 0.50, y + h * 0.59);
-        drawUniqueSign2_5D(x, y, w, h, p, "ЗАВОД ПЕРЕРАБОТКИ");
-    }
-
-    if (p.type === "default") drawTinyWindows(x, y, w, h * 0.72, 3, 3, p.accent);
-
-    drawBuildingWorkAnimation25D(x, y, w, h, p);
     ctx.restore();
 }
+
