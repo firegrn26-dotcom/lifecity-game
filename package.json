@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check": "node tools/check-js.js",
+    "check": "node tools/check-js.js && node tools/check-browser-smoke.js",
     "start:local": "node local-server.js"
   },
   "keywords": [],

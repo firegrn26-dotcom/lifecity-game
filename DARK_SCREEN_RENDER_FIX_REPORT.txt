@@ -1,0 +1,26 @@
+LifeCity V1.6.3 — Dark screen / auth camera fix
+
+Found real causes:
+1) public/index.html loaded city-layout.js before map.js.
+   city-layout.js called ensureRecyclingFactoryOnMap(), but the function is defined in map.js.
+   Result: browser stopped client JS execution before the city/render modules finished loading.
+   Visible symptom: music UI worked, but canvas stayed dark and auth camera did not fly over the city.
+
+2) buildings.js used colorWithAlpha() and lightenColor(), but these helpers were missing after cleanup/refactor.
+   Result: when render-loop tried to draw 2.5D buildings, draw() crashed.
+
+3) render-loop.js still contained duplicate DOM-auth rewrite code after loop().
+   This did not belong in render-loop and made the module harder to reason about.
+
+Fixed:
+- Reordered index.html: map.js now loads before city-layout.js.
+- Added safe color helpers to buildings.js:
+  colorWithAlpha(), parseHexColor25D(), lightenColor(), darkenColor().
+- Cleaned render-loop.js so it only handles render/update loop, not duplicate auth DOM code.
+- Added tools/check-browser-smoke.js to catch browser load-order/runtime render errors.
+- Updated npm run check to run both syntax check and browser smoke test.
+
+Verification:
+- npm run check passes.
+- Browser smoke test loads all 19 client modules in index.html order.
+- updateAuthCameraFlight() + draw() executes successfully.

@@ -1,3 +1,52 @@
+
+function parseHexColor25D(color) {
+    const c = String(color || '#ffffff').trim();
+    if (c[0] !== '#') return null;
+    let h = c.slice(1);
+    if (h.length === 3) h = h.split('').map(ch => ch + ch).join('');
+    const n = parseInt(h.slice(0, 6), 16);
+    if (Number.isNaN(n)) return null;
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function lightenColor(color, amount = 0) {
+    const rgb = parseHexColor25D(color);
+    if (!rgb) return color || '#ffffff';
+    const a = Number(amount) || 0;
+    const [r, g, b] = rgb.map(v => Math.max(0, Math.min(255, Math.round(v + (255 - v) * (a / 100)))));
+    return `rgb(${r},${g},${b})`;
+}
+
+function darkenColor(color, amount = 0) {
+    const rgb = parseHexColor25D(color);
+    if (!rgb) return color || '#000000';
+    const a = Math.max(0, Math.min(100, Number(amount) || 0));
+    const [r, g, b] = rgb.map(v => Math.max(0, Math.min(255, Math.round(v * (1 - a / 100)))));
+    return `rgb(${r},${g},${b})`;
+}
+
+
+// Utility: hex/rgb color with alpha for 2.5D building glow/strokes.
+function colorWithAlpha(color, alpha = 1) {
+    const a = Math.max(0, Math.min(1, Number(alpha) || 0));
+    if (!color) return `rgba(255,255,255,${a})`;
+    const c = String(color).trim();
+    if (c.startsWith('rgba(')) return c.replace(/rgba\(([^)]+),\s*[0-9.]+\)/, `rgba($1, ${a})`);
+    if (c.startsWith('rgb(')) return c.replace('rgb(', 'rgba(').replace(')', `, ${a})`);
+    if (c[0] === '#') {
+        let h = c.slice(1);
+        if (h.length === 3) h = h.split('').map(ch => ch + ch).join('');
+        const n = parseInt(h.slice(0, 6), 16);
+        if (!Number.isNaN(n)) {
+            const r = (n >> 16) & 255;
+            const g = (n >> 8) & 255;
+            const b = n & 255;
+            return `rgba(${r},${g},${b},${a})`;
+        }
+    }
+    return c;
+}
+
 // ===============================
 // 🏢 ЗДАНИЯ LIFE CITY — TOP-DOWN CITY STYLE
 // Вид строго сверху: здание читается по форме крыши, деталям и одной чистой вывеске.
