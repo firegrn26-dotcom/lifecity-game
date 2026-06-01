@@ -263,6 +263,175 @@ function applyDevMapObjectPatchToDb(patch) {
     return true;
 }
 
+
+function devSafeIdServer(text, fallback = "object") {
+    return String(text || fallback)
+        .trim()
+        .toLowerCase()
+        .replace(/ё/g, "е")
+        .replace(/[^a-zа-я0-9]+/gi, "_")
+        .replace(/^_+|_+$/g, "") || fallback;
+}
+
+function devObjectIdServer(kind, obj, index = 0) {
+    if (!obj) return `${kind}_${index}`;
+    return obj.id || `${kind}_${devSafeIdServer(obj.name || obj.type || "object")}_${index}`;
+}
+
+function parseClientArrayFromFile(filePath, varName) {
+    const raw = fs.readFileSync(filePath, "utf8");
+    const re = new RegExp(`let\\s+${varName}\\s*=\\s*(\\[[\\s\\S]*?\\n\\];)`, "m");
+    const match = raw.match(re);
+    if (!match) throw new Error(`Не найден массив ${varName} в ${path.basename(filePath)}`);
+    const literal = match[1].replace(/;\s*$/, "");
+    // Файлы карты содержат только статические литералы массивов.
+    // Function здесь используется локально сервером разработчика, не для пользовательского ввода.
+    return Function(`"use strict"; return (${literal});`)();
+}
+
+function stringifyClientArray(varName, arr) {
+    const lines = [`let ${varName} = [`];
+    for (const obj of arr) {
+        const entries = Object.entries(obj).filter(([, value]) => value !== undefined);
+        const parts = entries.map(([key, value]) => {
+            const safeKey = /^[a-zA-Z_$][\w$]*$/.test(key) ? key : JSON.stringify(key);
+            if (Array.isArray(value)) {
+                const compact = JSON.stringify(value).replace(/\{"x":/g, "{x:").replace(/,"y":/g, ", y:").replace(/\}/g, "}").replace(/"/g, "");
+                return `${safeKey}: ${compact}`;
+            }
+            if (typeof value === "string") return `${safeKey}: ${JSON.stringify(value)}`;
+            if (typeof value === "boolean") return `${safeKey}: ${value}`;
+            if (typeof value === "number") return `${safeKey}: ${Number.isFinite(value) ? value : 0}`;
+            return `${safeKey}: ${JSON.stringify(value)}`;
+        });
+        lines.push(`    { ${parts.join(", ")} },`);
+    }
+    lines.push(`];`);
+    return lines.join("\n");
+}
+
+function replaceClientArrayInFile(filePath, varName, arr) {
+    const raw = fs.readFileSync(filePath, "utf8");
+    const re = new RegExp(`let\\s+${varName}\\s*=\\s*\\[[\\s\\S]*?\\n\\];`, "m");
+    if (!re.test(raw)) throw new Error(`Не найден массив ${varName} в ${path.basename(filePath)}`);
+    const next = raw.replace(re, stringifyClientArray(varName, arr));
+    fs.writeFileSync(filePath, next, "utf8");
+}
+
+function applyRectPatchToSourceArray(arr, patch, kind) {
+    const idx = arr.findIndex((obj, index) => devObjectIdServer(kind, obj, index) === patch.id || obj?.name === patch.name);
+    if (idx < 0) return false;
+    arr[idx] = {
+        ...arr[idx],
+        x: patch.x,
+        y: patch.y,
+        w: patch.w,
+        h: patch.h
+    };
+    if (patch.color) arr[idx].color = patch.color;
+    if (patch.type) arr[idx].type = patch.type;
+    return true;
+}
+
+function applyRoadPatchToSourceArray(arr, patch) {
+    const idx = arr.findIndex((obj, index) => devObjectIdServer("road", obj, index) === patch.id || obj?.name === patch.name);
+    if (idx < 0) return false;
+    arr[idx] = {
+        ...arr[idx],
+        points: patch.points.map(p => ({ x: Math.round(p.x), y: Math.round(p.y) })),
+        width: patch.width || arr[idx].width,
+        lanes: patch.lanes || arr[idx].lanes
+    };
+    return true;
+}
+
+function patchRecyclingFactoryConst(filePath, factoryPatch) {
+    if (!factoryPatch) return;
+    let raw = fs.readFileSync(filePath, "utf8");
+    const re = /const\s+recyclingFactory\s*=\s*\{[\s\S]*?\n\};/m;
+    if (!re.test(raw)) return;
+    const obj = {
+        name: "Мусороперерабатывающий завод",
+        x: factoryPatch.x,
+        y: factoryPatch.y,
+        w: factoryPatch.w,
+        h: factoryPatch.h,
+        color: factoryPatch.color || "#3d5861",
+        type: "recyclingFactory",
+        alwaysVisibleComplex: true
+    };
+    const lines = ["const recyclingFactory = {"];
+    for (const [key, value] of Object.entries(obj)) {
+        if (typeof value === "string") lines.push(`    ${key}: ${JSON.stringify(value)},`);
+        else lines.push(`    ${key}: ${value},`);
+    }
+    lines.push("};");
+    raw = raw.replace(re, lines.join("\n"));
+    fs.writeFileSync(filePath, raw, "utf8");
+}
+
+function countMapObjectPatches() {
+    return ["buildings", "parks", "buildingZones", "roads"]
+        .reduce((sum, key) => sum + Object.keys(mapObjectsDb.objects[key] || {}).length, 0);
+}
+
+function commitMapObjectsDbToSourceFiles() {
+    const total = countMapObjectPatches();
+    if (total <= 0) return { ok: false, message: "Нет сохраненных правок карты для переноса в код." };
+
+    const publicJsDir = path.join(__dirname, "public", "js");
+    const mapFile = path.join(publicJsDir, "map.js");
+    const cityFile = path.join(publicJsDir, "city-layout.js");
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+
+    const mapBackup = `${mapFile}.bak-${stamp}`;
+    const cityBackup = `${cityFile}.bak-${stamp}`;
+    fs.copyFileSync(mapFile, mapBackup);
+    fs.copyFileSync(cityFile, cityBackup);
+
+    const buildingsSource = parseClientArrayFromFile(mapFile, "buildings");
+    const roadsSource = parseClientArrayFromFile(cityFile, "roads");
+    const buildingZonesSource = parseClientArrayFromFile(cityFile, "buildingZones");
+    const parksSource = parseClientArrayFromFile(cityFile, "parks");
+
+    let applied = 0;
+    let skipped = 0;
+    let factoryPatch = null;
+
+    for (const patch of Object.values(mapObjectsDb.objects.buildings || {})) {
+        if (applyRectPatchToSourceArray(buildingsSource, patch, "building")) {
+            applied++;
+            if (patch.type === "recyclingFactory" || patch.name === "Мусороперерабатывающий завод") factoryPatch = patch;
+        } else skipped++;
+    }
+    for (const patch of Object.values(mapObjectsDb.objects.parks || {})) {
+        if (applyRectPatchToSourceArray(parksSource, patch, "park")) applied++; else skipped++;
+    }
+    for (const patch of Object.values(mapObjectsDb.objects.buildingZones || {})) {
+        if (applyRectPatchToSourceArray(buildingZonesSource, patch, "buildingZone")) applied++; else skipped++;
+    }
+    for (const patch of Object.values(mapObjectsDb.objects.roads || {})) {
+        if (applyRoadPatchToSourceArray(roadsSource, patch)) applied++; else skipped++;
+    }
+
+    replaceClientArrayInFile(mapFile, "buildings", buildingsSource);
+    replaceClientArrayInFile(cityFile, "roads", roadsSource);
+    replaceClientArrayInFile(cityFile, "buildingZones", buildingZonesSource);
+    replaceClientArrayInFile(cityFile, "parks", parksSource);
+    patchRecyclingFactoryConst(mapFile, factoryPatch);
+
+    mapObjectsDb = createEmptyMapObjectsDatabase();
+    saveMapObjectsDatabaseNow();
+
+    return {
+        ok: true,
+        applied,
+        skipped,
+        backups: [path.basename(mapBackup), path.basename(cityBackup)],
+        message: `Перенесено в основные координаты: ${applied}. Пропущено: ${skipped}.`
+    };
+}
+
 function cleanLogin(login) {
     // Логин хранится в нижнем регистре: вход не зависит от регистра.
     // Разрешены только английские буквы, цифры и обычные символы.
@@ -1739,6 +1908,30 @@ io.on("connection", (socket) => {
             color: "green",
             icon: "🛠"
         });
+    });
+
+    socket.on("devCommitMapObjectsToSource", () => {
+        const p = players[socket.id];
+        if (!p) {
+            socket.emit("inventoryNotice", { title: "DEV MODE", text: "Сначала войди в персонажа.", color: "red", icon: "🛠" });
+            return;
+        }
+
+        try {
+            const result = commitMapObjectsDbToSourceFiles();
+            socket.emit("devMapObjectsCommitted", result);
+            socket.emit("mapObjectsState", mapObjectsDb.objects);
+            socket.emit("inventoryNotice", {
+                title: result.ok ? "КАРТА ЗАПИСАНА В КОД" : "КАРТА НЕ ИЗМЕНЕНА",
+                text: result.message,
+                color: result.ok ? "green" : "yellow",
+                icon: "🛠"
+            });
+        } catch (err) {
+            console.error("devCommitMapObjectsToSource error:", err);
+            socket.emit("devMapObjectsCommitted", { ok: false, message: err.message || "Ошибка переноса карты в код." });
+            socket.emit("inventoryNotice", { title: "ОШИБКА ЗАПИСИ КАРТЫ", text: err.message || "Не удалось записать координаты в код.", color: "red", icon: "🛠" });
+        }
     });
 
     socket.on("requestMapObjectsState", () => {

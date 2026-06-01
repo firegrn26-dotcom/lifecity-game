@@ -26,6 +26,11 @@ function handleDevMenuClick(mx, my) {
                 return true;
             }
 
+            if (item.type === "action") {
+                if (typeof item.onClick === "function") item.onClick();
+                return true;
+            }
+
             devOptions[item.key] = !devOptions[item.key];
 
             if (!isDevOptionOn("editBuildings")) {
@@ -131,13 +136,48 @@ function drawDevCheckbox(x, y, w, label, key, hint) {
     ctx.restore();
 }
 
+
+function drawDevActionButton(x, y, w, h, label, hint, accent, onClick) {
+    devMenuItems.push({ x, y, w, h, type: "action", onClick });
+
+    ctx.save();
+    roundedRect(x, y, w, h, 12);
+    ctx.fillStyle = devModeEnabled ? "rgba(255,194,51,0.12)" : "rgba(255,255,255,0.035)";
+    ctx.fill();
+    ctx.strokeStyle = devModeEnabled ? "rgba(255,194,51,0.48)" : "rgba(255,255,255,0.10)";
+    ctx.lineWidth = 1.3;
+    ctx.stroke();
+
+    ctx.fillStyle = devModeEnabled ? accent : "rgba(230,238,247,0.36)";
+    ctx.font = "bold 14px Arial";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, x + 16, y + 18);
+
+    ctx.fillStyle = devModeEnabled ? "rgba(230,238,247,0.62)" : "rgba(230,238,247,0.28)";
+    ctx.font = "12px Arial";
+    ctx.fillText(hint, x + 16, y + 38);
+    ctx.restore();
+}
+
+function requestCommitMapObjectsToSource() {
+    if (!devModeEnabled) return;
+    if (typeof devRequestCommitMapObjectsToSource === "function") {
+        devRequestCommitMapObjectsToSource();
+        return;
+    }
+    if (typeof socket !== "undefined" && socket?.emit) {
+        socket.emit("devCommitMapObjectsToSource");
+    }
+}
+
 function drawDevMenuPanel() {
     if (!devMenuOpen) return;
 
     devMenuItems = [];
 
     const w = 760;
-    const h = 520;
+    const h = 590;
     const x = 22;
     const y = 86;
     devMenuBounds = { x, y, w, h };
@@ -169,6 +209,17 @@ function drawDevMenuPanel() {
     drawDevCheckbox(rightX, startY, colW, "Названия улиц", "showStreetNames", "Подписи прямо на дорогах");
     drawDevCheckbox(rightX, startY + step, colW, "ID мусора", "showTrashIds", "Серверные ID у мусора");
     drawDevCheckbox(rightX, startY + step * 2, colW, "Хитбоксы игроков", "showPlayerHitboxes", "Рамки 20×20 для отладки");
+
+    drawDevActionButton(
+        rightX,
+        startY + step * 3 + 8,
+        colW,
+        56,
+        "Записать карту в основной код",
+        "Переносит data/map-objects-db.json в map.js / city-layout.js",
+        UI.yellow,
+        requestCommitMapObjectsToSource
+    );
 
     const statusY = y + h - 30;
     ctx.fillStyle = devModeEnabled ? UI.green : UI.red;

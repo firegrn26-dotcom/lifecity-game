@@ -298,6 +298,18 @@ function devEditorMouseUp() {
     return true;
 }
 
+
+function devRequestCommitMapObjectsToSource() {
+    if (!devModeEnabled) return;
+    devMapSavePending = true;
+    devMapStatusText = "Запись координат в основной код...";
+    devMapStatusUntil = performance.now() + 3200;
+
+    if (typeof socket !== "undefined" && socket?.emit) {
+        socket.emit("devCommitMapObjectsToSource");
+    }
+}
+
 function devDrawMapEditorOverlay() {
     if (!isDevOptionOn("editBuildings")) return;
 
@@ -351,6 +363,14 @@ if (typeof socket !== "undefined" && socket?.on) {
         devMapSavePending = false;
         devMapStatusText = `Карта обновлена: ${patch?.name || patch?.id || "объект"}`;
         devMapStatusUntil = performance.now() + 1800;
+    });
+
+    socket.on("devMapObjectsCommitted", (result) => {
+        devMapSavePending = false;
+        devMapStatusText = result?.ok
+            ? `Карта записана в код: ${result.applied || 0} объектов`
+            : `Карта не записана: ${result?.message || "нет данных"}`;
+        devMapStatusUntil = performance.now() + 4200;
     });
 
     // Первый пакет от сервера мог прийти до загрузки этого модуля,
