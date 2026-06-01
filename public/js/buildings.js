@@ -65,28 +65,8 @@ function drawTopDownBlock(x, y, w, h, radius, fill, stroke = "rgba(255,255,255,0
 }
 
 function drawRoofBase(x, y, w, h, p) {
-    ctx.save();
-
-    // Мягкая одна тень — без эффекта двойного здания.
-    drawTopDownBlock(x + 4, y + 5, w, h, Math.min(18, w / 8, h / 8), "rgba(0,0,0,0.24)", null);
-
-    const roof = ctx.createLinearGradient(x, y, x + w, y + h);
-    roof.addColorStop(0, lightenColor(p.roof, 22));
-    roof.addColorStop(0.45, p.roof);
-    roof.addColorStop(1, p.edge);
-
-    drawTopDownBlock(x, y, w, h, Math.min(18, w / 8, h / 8), roof, "rgba(255,255,255,0.16)", 1.3);
-
-    // Узкий внутренний кант крыши.
-    drawTopDownBlock(x + 7, y + 7, w - 14, h - 14, Math.min(13, w / 10, h / 10), "rgba(255,255,255,0.025)", "rgba(255,255,255,0.09)", 1);
-
-    // Акцентная линия периметра — аккуратно, без свечения слоем.
-    roundedRect(x + 1.5, y + 1.5, w - 3, h - 3, Math.min(16, w / 9, h / 9));
-    ctx.strokeStyle = colorWithAlpha(p.accent, 0.28);
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    ctx.restore();
+    // V1.6.10: крыши отключены. Оставляем только базовую тень/корпус через 2.5D shell.
+    return;
 }
 
 
@@ -96,21 +76,20 @@ function drawRoofBase(x, y, w, h, p) {
 // Здания остаются на своих x/y/w/h, но получают объем, фасады и мягкую тень.
 // ===============================
 const LIFE_CITY_25D_ENABLED = true;
+// V1.6.10: крыши домов полностью отключены по запросу.
+const LIFE_CITY_BUILDING_ROOFS_ENABLED = false;
 
 
 function drawRoofSurface25D(x, y, w, h, p) {
-    const roof = ctx.createLinearGradient(x, y, x + w, y + h);
-    roof.addColorStop(0, lightenColor(p.roof, 28));
-    roof.addColorStop(0.46, p.roof);
-    roof.addColorStop(1, p.edge);
-
-    drawTopDownBlock(x, y, w, h, Math.min(18, w / 8, h / 8), roof, "rgba(255,255,255,0.18)", 1.25);
-    drawTopDownBlock(x + 7, y + 7, w - 14, h - 14, Math.min(13, w / 10, h / 10), "rgba(255,255,255,0.026)", "rgba(255,255,255,0.09)", 1);
-
-    roundedRect(x + 1.5, y + 1.5, w - 3, h - 3, Math.min(16, w / 9, h / 9));
-    ctx.strokeStyle = colorWithAlpha(p.accent, 0.32);
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    // V1.6.10: настоящая крыша полностью удалена.
+    // Рисуем только приглушенную верхнюю плоскость корпуса, чтобы здание не исчезало.
+    if (!LIFE_CITY_BUILDING_ROOFS_ENABLED) {
+        const body = ctx.createLinearGradient(x, y, x + w, y + h);
+        body.addColorStop(0, lightenColor(p.wall || p.edge, 14));
+        body.addColorStop(1, darkenColor(p.wall || p.edge, 18));
+        drawTopDownBlock(x, y, w, h, Math.min(12, w / 10, h / 10), body, "rgba(255,255,255,0.07)", 1);
+        return;
+    }
 }
 
 function drawBuilding25DShell(x, y, w, h, p, z) {
@@ -189,16 +168,8 @@ function drawRoofLabel(x, y, w, h, text, accent, yRatio = 0.65) {
 }
 
 function drawRoofUnit(x, y, w, h, accent, alpha = 1, radius = 5) {
-    ctx.save();
-    drawTopDownBlock(x, y, w, h, radius, `rgba(5,10,18,${0.42 * alpha})`, `rgba(255,255,255,${0.14 * alpha})`, 1);
-    ctx.strokeStyle = colorWithAlpha(accent, 0.25 * alpha);
-    ctx.beginPath();
-    ctx.moveTo(x + 4, y + h / 2);
-    ctx.lineTo(x + w - 4, y + h / 2);
-    ctx.moveTo(x + w / 2, y + 4);
-    ctx.lineTo(x + w / 2, y + h - 4);
-    ctx.stroke();
-    ctx.restore();
+    // V1.6.10: все малые roof-блоки/вентиляция/техблоки отключены.
+    return;
 }
 
 function drawTinyWindows(x, y, w, h, cols, rows, accent) {
@@ -520,121 +491,8 @@ function drawBuildingWorkAnimation25D(x, y, w, h, p) {
 
 
 function drawRoofGeometry25D(x, y, w, h, p) {
-    // V1.6.8: полноценная 2.5D-крыша — свесы, парапеты, ребра, техблоки и тени.
-    // Это не меняет физический прямоугольник здания, только визуальный верхний слой.
-    ctx.save();
-    const inset = Math.max(8, Math.min(22, Math.min(w, h) * 0.10));
-    const accent = p.accent || "#58c7ff";
-    const roofShadow = "rgba(0,0,0,0.22)";
-
-    function roofRim(alpha = 0.22) {
-        roundedRect(x + 5, y + 5, w - 10, h - 10, Math.min(14, w / 10, h / 10));
-        ctx.strokeStyle = colorWithAlpha(accent, alpha);
-        ctx.lineWidth = 1.4;
-        ctx.stroke();
-        roundedRect(x + 11, y + 11, w - 22, h - 22, Math.min(10, w / 13, h / 13));
-        ctx.strokeStyle = "rgba(255,255,255,0.085)";
-        ctx.lineWidth = 1;
-        ctx.stroke();
-    }
-
-    function roofVent(vx, vy, vw, vh, glow = 0.18) {
-        drawTopDownBlock(vx + 2, vy + 3, vw, vh, 5, roofShadow, null);
-        drawTopDownBlock(vx, vy, vw, vh, 5, "rgba(10,16,24,0.72)", "rgba(255,255,255,0.13)", 1);
-        ctx.strokeStyle = colorWithAlpha(accent, glow);
-        ctx.beginPath();
-        ctx.moveTo(vx + 5, vy + vh * 0.50);
-        ctx.lineTo(vx + vw - 5, vy + vh * 0.50);
-        ctx.moveTo(vx + vw * 0.50, vy + 4);
-        ctx.lineTo(vx + vw * 0.50, vy + vh - 4);
-        ctx.stroke();
-    }
-
-    function roofSkylight(vx, vy, vw, vh) {
-        const g = ctx.createLinearGradient(vx, vy, vx + vw, vy + vh);
-        g.addColorStop(0, colorWithAlpha(accent, 0.34));
-        g.addColorStop(0.48, "rgba(220,245,255,0.12)");
-        g.addColorStop(1, "rgba(5,12,22,0.56)");
-        drawTopDownBlock(vx + 2, vy + 3, vw, vh, 5, "rgba(0,0,0,0.20)", null);
-        drawTopDownBlock(vx, vy, vw, vh, 5, g, "rgba(255,255,255,0.18)", 1);
-    }
-
-    if (p.type === "home") {
-        // Жилой дом: двускатная крыша с объемным коньком и секциями.
-        const ridgeY = y + h * 0.38;
-        ctx.fillStyle = "rgba(255,255,255,0.035)";
-        ctx.beginPath();
-        ctx.moveTo(x + inset, y + inset);
-        ctx.lineTo(x + w / 2, ridgeY);
-        ctx.lineTo(x + w - inset, y + inset);
-        ctx.lineTo(x + w - inset * 0.8, y + h - inset);
-        ctx.lineTo(x + inset * 0.8, y + h - inset);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = "rgba(255,255,255,0.18)";
-        ctx.lineWidth = 1.6;
-        ctx.beginPath();
-        ctx.moveTo(x + inset, y + inset);
-        ctx.lineTo(x + w / 2, ridgeY);
-        ctx.lineTo(x + w - inset, y + inset);
-        ctx.stroke();
-        ctx.strokeStyle = "rgba(0,0,0,0.28)";
-        ctx.beginPath();
-        ctx.moveTo(x + w / 2, ridgeY);
-        ctx.lineTo(x + w / 2, y + h - inset);
-        ctx.stroke();
-        for (let i = 0; i < 3; i++) roofVent(x + w * (0.17 + i * 0.24), y + h * 0.63, w * 0.08, h * 0.10, 0.12);
-    } else if (p.type === "city" || p.type === "bank" || p.type === "police") {
-        // Административные здания: строгий высокий парапет и центральный купол/щит.
-        roofRim(0.28);
-        drawTopDownBlock(x + inset, y + inset, w - inset * 2, h * 0.22, 8, "rgba(255,255,255,0.052)", colorWithAlpha(accent, 0.18), 1);
-        drawTopDownBlock(x + w * 0.36, y + h * 0.36, w * 0.28, h * 0.18, 10, "rgba(255,255,255,0.050)", colorWithAlpha(accent, 0.25), 1.2);
-        roofSkylight(x + w * 0.41, y + h * 0.41, w * 0.18, h * 0.08);
-        roofVent(x + w * 0.14, y + h * 0.66, w * 0.10, h * 0.11);
-        roofVent(x + w * 0.76, y + h * 0.66, w * 0.10, h * 0.11);
-    } else if (p.type === "shop" || p.type === "cafe" || p.type === "pharmacy") {
-        // Коммерция: плоская крыша с высоким парапетом, навесом и световыми окнами.
-        roofRim(0.30);
-        drawTopDownBlock(x + inset, y + inset, w - inset * 2, h - inset * 2, 9, "rgba(255,255,255,0.038)", colorWithAlpha(accent, 0.16), 1);
-        drawTopDownBlock(x + w * 0.12, y + h * 0.24, w * 0.76, h * 0.11, 7, colorWithAlpha(accent, 0.13), colorWithAlpha(accent, 0.28), 1);
-        for (let i = 0; i < 3; i++) roofSkylight(x + w * (0.18 + i * 0.22), y + h * 0.56, w * 0.13, h * 0.10);
-        roofVent(x + w * 0.75, y + h * 0.72, w * 0.09, h * 0.11);
-    } else if (p.type === "service" || p.type === "recyclingFactory") {
-        // Промка: металлопрофиль, крупные вентиляционные блоки, технические световые полосы.
-        roofRim(0.22);
-        ctx.strokeStyle = "rgba(255,255,255,0.11)";
-        ctx.lineWidth = 1;
-        const ribs = Math.max(5, Math.min(14, Math.floor(w / 38)));
-        for (let i = 1; i < ribs; i++) {
-            const rx = x + (w / ribs) * i;
-            ctx.beginPath();
-            ctx.moveTo(rx, y + inset);
-            ctx.lineTo(rx - 12, y + h - inset);
-            ctx.stroke();
-        }
-        const units = p.type === "recyclingFactory" ? 5 : 3;
-        for (let i = 0; i < units; i++) {
-            roofVent(x + w * (0.12 + i * (0.70 / Math.max(1, units - 1))), y + h * 0.23, w * 0.075, h * 0.18, 0.24);
-        }
-        drawTopDownBlock(x + w * 0.12, y + h * 0.72, w * 0.76, h * 0.08, 5, colorWithAlpha(accent, 0.10), colorWithAlpha(accent, 0.25), 1);
-    } else if (p.type === "trash") {
-        roofRim(0.20);
-        drawTopDownBlock(x + w * 0.20, y + h * 0.22, w * 0.60, h * 0.18, 5, "rgba(255,255,255,0.05)", colorWithAlpha(accent, 0.20), 1);
-        roofVent(x + w * 0.36, y + h * 0.56, w * 0.28, h * 0.18, 0.18);
-    } else {
-        roofRim(0.20);
-        roofVent(x + inset, y + inset, Math.max(24, w * 0.12), Math.max(14, h * 0.12), 0.14);
-    }
-
-    // Общая нижняя кромка свеса крыши — усиливает объем.
-    ctx.strokeStyle = "rgba(0,0,0,0.30)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(x + 8, y + h - 7);
-    ctx.lineTo(x + w - 8, y + h - 7);
-    ctx.stroke();
-
-    ctx.restore();
+    // V1.6.10: крыши зданий удалены полностью.
+    return;
 }
 
 function drawBuildingFootprint25D(x, y, w, h, p) {
@@ -669,7 +527,8 @@ function drawStyledBuilding(b) {
         ? drawBuilding25DShell(x, y, w, h, p, z)
         : (drawRoofBase(x, y, w, h, p), y);
 
-    // Все декоративные детали рисуются на крыше, а физический прямоугольник здания остается прежним.
+    // V1.6.10: крыши отключены, декоративная roof-геометрия не рисуется.
+    // Корпус, фасады, двери, окна и вывески остаются.
     drawRoofGeometry25D(x, roofY, w, h, p);
     drawBuildingTypeDetails(x, roofY, w, h, p);
     if (LIFE_CITY_25D_ENABLED) drawFacadeEntrance25D(x, y, w, h, z, p);
