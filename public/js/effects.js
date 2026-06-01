@@ -80,6 +80,206 @@ function drawWorldGlow(wx, wy, radius, color, alpha = 1) {
     ctx.restore();
 }
 
+
+function drawWorldEllipseGlow(wx, wy, rx, ry, color, alpha = 1, rotation = 0) {
+    const sx = wx - camera.x;
+    const sy = wy - camera.y;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(sx, sy);
+    ctx.rotate(rotation);
+    const g = ctx.createRadialGradient(0, 0, 1, 0, 0, Math.max(rx, ry));
+    g.addColorStop(0, color);
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.scale(rx / Math.max(rx, ry), ry / Math.max(rx, ry));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, Math.max(rx, ry), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+}
+
+function drawLampPost25D(meta) {
+    const { x, y, edgeX, edgeY, road, nx, ny, angle, i } = meta;
+    const sx = x - camera.x;
+    const sy = y - camera.y;
+    const pulse = 0.88 + Math.sin(performance.now() / 560 + i * 1.37) * 0.10;
+    const isHighway = road && road.type === "highway";
+    const poleH = isHighway ? 34 : 28;
+    const armLen = isHighway ? 25 : 20;
+    const lampX = x + nx * armLen;
+    const lampY = y + ny * armLen - poleH;
+    const footX = x - camera.x;
+    const footY = y - camera.y;
+    const topX = x - camera.x;
+    const topY = y - camera.y - poleH;
+
+    drawWorldEllipseGlow(lampX, lampY + poleH * 0.64, isHighway ? 86 : 68, isHighway ? 34 : 28, "rgba(255,197,86,0.28)", pulse * 0.70, angle || 0);
+    drawWorldGlow(lampX, lampY, isHighway ? 76 : 58, "rgba(255,214,124,0.23)", pulse);
+
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    // Мягкая 2.5D тень от столба и консоли.
+    ctx.strokeStyle = "rgba(0,0,0,0.26)";
+    ctx.lineWidth = isHighway ? 7 : 6;
+    ctx.beginPath();
+    ctx.moveTo(footX + 9, footY + 8);
+    ctx.lineTo(topX + 13, topY + 13);
+    ctx.lineTo(lampX - camera.x + 13, lampY - camera.y + 13);
+    ctx.stroke();
+
+    // Бордюрная крепежная пластина — фонарь стоит на тротуаре, а не в воздухе.
+    roundedRect(sx - 7, sy - 4, 14, 8, 3);
+    ctx.fillStyle = "rgba(9,14,22,0.78)";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(110,135,160,0.42)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Короткий крепеж от края дороги к основанию.
+    ctx.strokeStyle = "rgba(8,13,20,0.72)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(edgeX - camera.x, edgeY - camera.y);
+    ctx.lineTo(sx, sy);
+    ctx.stroke();
+
+    // 2.5D столб: темная сторона + светлая грань.
+    const poleGrad = ctx.createLinearGradient(footX - 4, footY, topX + 4, topY);
+    poleGrad.addColorStop(0, "rgba(32,42,55,0.98)");
+    poleGrad.addColorStop(0.48, "rgba(88,103,121,0.96)");
+    poleGrad.addColorStop(1, "rgba(18,25,35,0.98)");
+    ctx.strokeStyle = poleGrad;
+    ctx.lineWidth = isHighway ? 5 : 4;
+    ctx.beginPath();
+    ctx.moveTo(footX, footY);
+    ctx.lineTo(topX, topY);
+    ctx.stroke();
+
+    ctx.strokeStyle = "rgba(190,213,235,0.34)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(footX - 1.5, footY - 1);
+    ctx.lineTo(topX - 1.5, topY + 1);
+    ctx.stroke();
+
+    // Консоль и головка фонаря вынесены над дорогой.
+    const armEndX = lampX - camera.x;
+    const armEndY = lampY - camera.y;
+    ctx.strokeStyle = "rgba(42,54,69,0.98)";
+    ctx.lineWidth = isHighway ? 4 : 3;
+    ctx.beginPath();
+    ctx.moveTo(topX, topY);
+    ctx.quadraticCurveTo((topX + armEndX) / 2, topY - 7, armEndX, armEndY);
+    ctx.stroke();
+
+    ctx.shadowColor = "rgba(255,209,112,0.95)";
+    ctx.shadowBlur = isHighway ? 22 : 18;
+    roundedRect(armEndX - 8, armEndY - 4, 16, 8, 4);
+    ctx.fillStyle = "rgba(255,225,150,0.98)";
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = "rgba(255,246,205,0.70)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Маленькая декоративная точка питания/индикатор.
+    ctx.fillStyle = "rgba(92,205,255,0.65)";
+    ctx.beginPath();
+    ctx.arc(topX, topY, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+}
+
+function drawStreetSign25D(meta) {
+    const { x, y, edgeX, edgeY, nx, ny, road, angle, i } = meta;
+    const sx = x - camera.x;
+    const sy = y - camera.y;
+    const label = road && road.name ? String(road.name).replace(/^ул\.\s*/i, "УЛ. ").toUpperCase() : (i % 2 === 0 ? "LIFE CITY" : "ЦЕНТР");
+    const shortLabel = label.length > 16 ? label.slice(0, 15) + "…" : label;
+    const pulse = 0.78 + Math.sin(performance.now() / 900 + i) * 0.07;
+    const panelX = x + nx * 22;
+    const panelY = y + ny * 22 - 22;
+    const psx = panelX - camera.x;
+    const psy = panelY - camera.y;
+    const w = Math.min(112, Math.max(58, shortLabel.length * 6.8 + 22));
+    const h = 24;
+
+    drawWorldGlow(panelX, panelY, 42, "rgba(72,197,255,0.16)", pulse);
+
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    // Тень, чтобы табличка стала объемной и привязанной к земле.
+    ctx.strokeStyle = "rgba(0,0,0,0.25)";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(sx + 6, sy + 7);
+    ctx.lineTo(psx + 8, psy + h / 2 + 8);
+    ctx.stroke();
+
+    // Крепление от бордюра к стойке.
+    ctx.strokeStyle = "rgba(8,13,20,0.70)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(edgeX - camera.x, edgeY - camera.y);
+    ctx.lineTo(sx, sy);
+    ctx.stroke();
+
+    // Две стойки под табличкой.
+    const postGrad = ctx.createLinearGradient(sx - 3, sy, sx + 3, psy);
+    postGrad.addColorStop(0, "rgba(24,34,48,0.96)");
+    postGrad.addColorStop(0.55, "rgba(92,109,128,0.95)");
+    postGrad.addColorStop(1, "rgba(19,29,43,0.98)");
+    ctx.strokeStyle = postGrad;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(sx - 4, sy);
+    ctx.lineTo(psx - w * 0.28, psy + h / 2);
+    ctx.moveTo(sx + 4, sy);
+    ctx.lineTo(psx + w * 0.28, psy + h / 2);
+    ctx.stroke();
+
+    // Светящаяся неоновая рамка.
+    ctx.shadowColor = "rgba(72,205,255,0.75)";
+    ctx.shadowBlur = 16;
+    roundedRect(psx - w / 2, psy - h / 2, w, h, 6);
+    const panelGrad = ctx.createLinearGradient(psx - w / 2, psy - h / 2, psx + w / 2, psy + h / 2);
+    panelGrad.addColorStop(0, "rgba(8,18,31,0.98)");
+    panelGrad.addColorStop(0.52, "rgba(18,43,65,0.96)");
+    panelGrad.addColorStop(1, "rgba(5,13,24,0.98)");
+    ctx.fillStyle = panelGrad;
+    ctx.fill();
+    ctx.strokeStyle = "rgba(98,220,255,0.88)";
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Верхняя грань 2.5D.
+    ctx.fillStyle = "rgba(180,235,255,0.12)";
+    roundedRect(psx - w / 2 + 4, psy - h / 2 + 3, w - 8, 4, 2);
+    ctx.fill();
+
+    ctx.fillStyle = "rgba(222,247,255,0.96)";
+    ctx.font = "bold 8.5px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(shortLabel, psx, psy + 0.5);
+
+    // Маленький направляющий шеврон.
+    ctx.fillStyle = "rgba(255,210,105,0.88)";
+    ctx.beginPath();
+    ctx.moveTo(psx + w / 2 - 12, psy);
+    ctx.lineTo(psx + w / 2 - 18, psy - 5);
+    ctx.lineTo(psx + w / 2 - 18, psy + 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+}
+
 function getRoadEdgeOffsetV2(road) {
     // Половина ширины дороги + небольшой тротуарный отступ.
     // Так фонари/таблички стоят именно у края дороги, а не на полотне.
@@ -304,35 +504,10 @@ function getRoadsideLayoutV3() {
 function drawStreetLightsV2() {
     ctx.save();
     const layout = getRoadsideLayoutV3();
-    for (const meta of layout.lights) {
-        const { x, y, edgeX, edgeY, road, nx, ny, i } = meta;
-        if (!isOnScreenWorld(x, y, 240)) continue;
-
-        const pulse = 0.82 + Math.sin(performance.now() / 740 + i) * 0.08;
-        const lampX = x + nx * 6;
-        const lampY = y + ny * 6;
-
-        drawWorldGlow(lampX, lampY, road.type === "highway" ? 92 : 72, "rgba(255,196,92,0.30)", pulse);
-
-        ctx.save();
-        ctx.translate(0, 0);
-
-        // Тонкая ножка от края дороги до столба — теперь видно, что фонарь привязан к бордюру.
-        ctx.strokeStyle = "rgba(8,13,20,0.82)";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(edgeX - camera.x, edgeY - camera.y);
-        ctx.lineTo(x - camera.x, y - camera.y);
-        ctx.lineTo(lampX - camera.x, lampY - camera.y);
-        ctx.stroke();
-
-        ctx.shadowColor = "rgba(255,205,115,0.78)";
-        ctx.shadowBlur = 17;
-        ctx.fillStyle = "rgba(255,224,150,0.96)";
-        ctx.beginPath();
-        ctx.arc(lampX - camera.x, lampY - camera.y, 3.4, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
+    const sorted = layout.lights.slice().sort((a, b) => (a.y - b.y));
+    for (const meta of sorted) {
+        if (!isOnScreenWorld(meta.x, meta.y, 300)) continue;
+        drawLampPost25D(meta);
     }
     ctx.restore();
 }
@@ -375,40 +550,10 @@ function drawRoadSurfaceDetailsV2() {
 function drawCityPropsV2() {
     ctx.save();
     const layout = getRoadsideLayoutV3();
-    for (const meta of layout.signs) {
-        const { x, y, edgeX, edgeY, nx, ny, i } = meta;
-        if (!isOnScreenWorld(x, y, 150)) continue;
-
-        const sx = x - camera.x;
-        const sy = y - camera.y;
-        const label = i % 3 === 0 ? "LIFE" : i % 3 === 1 ? "CITY" : "RP";
-        const panelX = nx * 16;
-        const panelY = ny * 16;
-
-        ctx.save();
-
-        // Стойка начинается от края дороги, а сама табличка вынесена наружу от дороги.
-        ctx.strokeStyle = "rgba(10,16,24,0.76)";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(edgeX - camera.x, edgeY - camera.y);
-        ctx.lineTo(sx, sy);
-        ctx.lineTo(sx + panelX, sy + panelY);
-        ctx.stroke();
-
-        ctx.translate(sx + panelX, sy + panelY);
-        roundedRect(-21, -10, 42, 20, 5);
-        ctx.fillStyle = "rgba(12,22,34,0.92)";
-        ctx.fill();
-        ctx.strokeStyle = "rgba(88,199,255,0.42)";
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.fillStyle = "rgba(205,240,255,0.92)";
-        ctx.font = "bold 8px Arial";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(label, 0, 0);
-        ctx.restore();
+    const sorted = layout.signs.slice().sort((a, b) => (a.y - b.y));
+    for (const meta of sorted) {
+        if (!isOnScreenWorld(meta.x, meta.y, 190)) continue;
+        drawStreetSign25D(meta);
     }
     ctx.restore();
 }
