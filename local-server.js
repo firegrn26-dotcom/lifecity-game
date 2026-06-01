@@ -29,6 +29,7 @@ const DATA_DIR = path.join(__dirname, "data");
 const DB_FILE = path.join(DATA_DIR, "players-db.json");
 const TRASH_DB_FILE = path.join(DATA_DIR, "trash-db.json");
 const CHAT_DB_FILE = path.join(DATA_DIR, "chat-db.json");
+const MAP_OBJECTS_FILE = path.join(DATA_DIR, "map-objects-db.json");
 
 function ensureDataDir() {
     if (!fs.existsSync(DATA_DIR)) {
@@ -142,6 +143,124 @@ function saveDatabaseNow() {
 function saveDatabaseDebounced() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(saveDatabaseNow, 350);
+}
+
+
+// ===============================
+// 🗺️ DEV MAP OBJECTS DATABASE
+// Сохраняет правки объектов карты из меню разработчика:
+// здания, зоны, парки и дороги. Файл не трогает игровые аккаунты.
+// ===============================
+function createEmptyMapObjectsDatabase() {
+    return {
+        version: 1,
+        updatedAt: 0,
+        objects: {
+            buildings: {},
+            parks: {},
+            buildingZones: {},
+            roads: {}
+        }
+    };
+}
+
+function normalizeMapObjectsDatabase(data) {
+    const empty = createEmptyMapObjectsDatabase();
+    const src = data && typeof data === "object" ? data : {};
+    src.version = src.version || empty.version;
+    src.updatedAt = Number(src.updatedAt) || 0;
+    src.objects = src.objects && typeof src.objects === "object" ? src.objects : {};
+    for (const key of ["buildings", "parks", "buildingZones", "roads"]) {
+        src.objects[key] = src.objects[key] && typeof src.objects[key] === "object" ? src.objects[key] : {};
+    }
+    return src;
+}
+
+function loadMapObjectsDatabase() {
+    ensureDataDir();
+
+    if (!fs.existsSync(MAP_OBJECTS_FILE)) {
+        const empty = createEmptyMapObjectsDatabase();
+        fs.writeFileSync(MAP_OBJECTS_FILE, JSON.stringify(empty, null, 4), "utf8");
+        return empty;
+    }
+
+    try {
+        return normalizeMapObjectsDatabase(JSON.parse(fs.readFileSync(MAP_OBJECTS_FILE, "utf8") || "{}"));
+    } catch (err) {
+        console.error("Map objects DB load error:", err);
+        return createEmptyMapObjectsDatabase();
+    }
+}
+
+let mapObjectsDb = loadMapObjectsDatabase();
+let mapObjectsSaveTimer = null;
+
+function saveMapObjectsDatabaseNow() {
+    ensureDataDir();
+    mapObjectsDb.updatedAt = Date.now();
+    fs.writeFileSync(MAP_OBJECTS_FILE, JSON.stringify(mapObjectsDb, null, 4), "utf8");
+}
+
+function saveMapObjectsDatabaseDebounced() {
+    clearTimeout(mapObjectsSaveTimer);
+    mapObjectsSaveTimer = setTimeout(saveMapObjectsDatabaseNow, 250);
+}
+
+function sanitizeDevMapObjectPatch(raw) {
+    if (!raw || typeof raw !== "object") return null;
+
+    const kind = String(raw.kind || "");
+    if (!["building", "park", "buildingZone", "road"].includes(kind)) return null;
+
+    const id = String(raw.id || raw.name || "").trim().slice(0, 120);
+    if (!id) return null;
+
+    const patch = { kind, id, name: String(raw.name || id).slice(0, 120) };
+
+    if (kind === "road") {
+        const points = Array.isArray(raw.points) ? raw.points.slice(0, 12) : [];
+        patch.points = points
+            .map(pt => ({
+                x: Math.round(Number(pt?.x)),
+                y: Math.round(Number(pt?.y))
+            }))
+            .filter(pt => Number.isFinite(pt.x) && Number.isFinite(pt.y));
+        patch.width = Math.max(24, Math.min(180, Math.round(Number(raw.width) || 72)));
+        patch.lanes = Math.max(1, Math.min(8, Math.round(Number(raw.lanes) || 2)));
+        if (patch.points.length < 2) return null;
+        return patch;
+    }
+
+    for (const key of ["x", "y", "w", "h"]) {
+        const value = Math.round(Number(raw[key]));
+        if (!Number.isFinite(value)) return null;
+        patch[key] = value;
+    }
+
+    patch.w = Math.max(20, Math.min(1200, patch.w));
+    patch.h = Math.max(20, Math.min(900, patch.h));
+    if (typeof raw.color === "string") patch.color = raw.color.slice(0, 32);
+    if (typeof raw.type === "string") patch.type = raw.type.slice(0, 80);
+    return patch;
+}
+
+function applyDevMapObjectPatchToDb(patch) {
+    const bucketByKind = {
+        building: "buildings",
+        park: "parks",
+        buildingZone: "buildingZones",
+        road: "roads"
+    };
+
+    const bucket = bucketByKind[patch.kind];
+    if (!bucket) return false;
+
+    mapObjectsDb.objects[bucket][patch.id] = {
+        ...patch,
+        updatedAt: Date.now()
+    };
+    return true;
 }
 
 function cleanLogin(login) {
@@ -1022,6 +1141,7 @@ function cleanChatText(text) {
 io.on("connection", (socket) => {
     socket.emit("authRequired", { message: "Войди или создай персонажа" });
     socket.emit("trashItems", trashItems);
+    socket.emit("mapObjectsState", mapObjectsDb.objects);
 
     function finishAuth(account) {
         const character = normalizeCharacter(account.character);
@@ -1594,6 +1714,36 @@ io.on("connection", (socket) => {
     });
 
 
+
+
+    socket.on("devUpdateMapObject", (rawPatch) => {
+        const p = players[socket.id];
+        if (!p) {
+            socket.emit("inventoryNotice", { title: "DEV MODE", text: "Сначала войди в персонажа.", color: "red", icon: "🛠" });
+            return;
+        }
+
+        const patch = sanitizeDevMapObjectPatch(rawPatch);
+        if (!patch) {
+            socket.emit("inventoryNotice", { title: "DEV MODE", text: "Некорректные данные объекта карты.", color: "red", icon: "🛠" });
+            return;
+        }
+
+        if (!applyDevMapObjectPatchToDb(patch)) return;
+        saveMapObjectsDatabaseDebounced();
+
+        io.emit("mapObjectUpdated", patch);
+        socket.emit("inventoryNotice", {
+            title: "КАРТА СОХРАНЕНА",
+            text: `${patch.name || patch.id}: координаты сохранены на сервере`,
+            color: "green",
+            icon: "🛠"
+        });
+    });
+
+    socket.on("requestMapObjectsState", () => {
+        socket.emit("mapObjectsState", mapObjectsDb.objects);
+    });
 
     socket.on("disconnect", () => {
         const p = getPlayer(socket);

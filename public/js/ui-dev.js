@@ -160,7 +160,7 @@ function drawDevMenuPanel() {
     const startY = y + 184;
     const step = 58;
 
-    drawDevCheckbox(leftX, startY, colW, "Редактировать здания", "editBuildings", "ЛКМ — двигать, Shift — ширина, Ctrl — высота");
+    drawDevCheckbox(leftX, startY, colW, "Редактировать объекты карты", "editBuildings", "ЛКМ — двигать, Shift — ширина, Ctrl — высота, дороги двигаются целиком");
     drawDevCheckbox(leftX, startY + step, colW, "Границы дорог", "showRoadBounds", "Рамки дорог, START/END и координаты");
     drawDevCheckbox(leftX, startY + step * 2, colW, "Сетка координат", "showGrid", "Сетка 100 px и подписи координат");
     drawDevCheckbox(leftX, startY + step * 3, colW, "Районы", "showDistricts", "Границы и названия районов");
@@ -175,7 +175,7 @@ function drawDevMenuPanel() {
     ctx.font = "bold 13px Arial";
     ctx.fillText(
         devModeEnabled
-            ? (devOptions.editBuildings ? "Редактирование активно: результат выводится в Console после отпускания мыши" : "Режим включён: выбери нужные debug-слои галочками")
+            ? (devOptions.editBuildings ? "Редактирование активно: после отпускания мыши объект сохраняется на сервере" : "Режим включён: выбери нужные debug-слои галочками")
             : "Режим выключен: все debug-слои и редактирование скрыты",
         x + 28,
         statusY

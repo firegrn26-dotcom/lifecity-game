@@ -375,6 +375,7 @@ if (gameplayHudAlpha > 0.01) {
     ctx.globalAlpha *= gameplayHudAlpha;
     drawChatPanel();
     drawJobHintPanel();
+    if (typeof devDrawMapEditorOverlay === "function") devDrawMapEditorOverlay();
     drawDevMenuPanel();
     drawDevCoordinatesPanel();
     drawModernHUD();

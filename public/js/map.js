@@ -48,16 +48,14 @@ function ensureRecyclingFactoryOnMap() {
         factory = { ...recyclingFactory };
         buildings.push(factory);
     } else {
-        Object.assign(factory, {
-            name: recyclingFactory.name,
-            x: recyclingFactory.x,
-            y: recyclingFactory.y,
-            w: recyclingFactory.w,
-            h: recyclingFactory.h,
-            color: recyclingFactory.color,
-            type: "recyclingFactory",
-            alwaysVisibleComplex: true
-        });
+        // Не перезаписываем координаты и размер: dev-map-editor может сохранять завод на сервере.
+        // Здесь только гарантируем идентичность и обязательные флаги комплекса.
+        factory.name = recyclingFactory.name;
+        factory.color = factory.color || recyclingFactory.color;
+        factory.type = "recyclingFactory";
+        factory.alwaysVisibleComplex = true;
+        factory.w = Math.max(120, Number(factory.w) || recyclingFactory.w);
+        factory.h = Math.max(80, Number(factory.h) || recyclingFactory.h);
     }
 
     if (Array.isArray(buildingZones) && !buildingZones.some(z => z.name === "Промышленная зона переработки")) {

@@ -81,6 +81,7 @@ function isDevOptionOn(key) {
 
 function resetDevEditState() {
     selectedBuilding = null;
+    if (typeof devSelectedMapObject !== "undefined") devSelectedMapObject = null;
     resizeModeX = false;
     resizeModeY = false;
 }
@@ -205,30 +206,9 @@ canvas.addEventListener("mousedown", (e) => {
         return;
     }
 
-    if (!isDevOptionOn("editBuildings")) return;
-
-    const mouseX = e.clientX + camera.x;
-    const mouseY = e.clientY + camera.y;
-
-    for (let b of buildings) {
-
-        if (
-            mouseX >= b.x &&
-            mouseX <= b.x + b.w &&
-            mouseY >= b.y &&
-            mouseY <= b.y + b.h
-        ) {
-
-            selectedBuilding = b;
-
-            dragOffsetX = mouseX - b.x;
-            dragOffsetY = mouseY - b.y;
-
-            resizeModeX = e.shiftKey;
-            resizeModeY = e.ctrlKey;
-
-            break;
-        }
+    if (typeof devEditorMouseDown === "function" && devEditorMouseDown(e)) {
+        e.preventDefault();
+        return;
     }
 });
 
@@ -237,52 +217,15 @@ canvas.addEventListener("mousemove", (e) => {
     chatMouse.x = e.clientX;
     chatMouse.y = e.clientY;
 
-    if (!isDevOptionOn("editBuildings") || !selectedBuilding) return;
-
-    const mouseX = e.clientX + camera.x;
-    const mouseY = e.clientY + camera.y;
-
-    // resize X
-    if (resizeModeX) {
-
-        selectedBuilding.w = Math.max(
-            30,
-            Math.round(mouseX - selectedBuilding.x)
-        );
-
+    if (typeof devEditorMouseMove === "function" && devEditorMouseMove(e)) {
         return;
     }
-
-    // resize Y
-    if (resizeModeY) {
-
-        selectedBuilding.h = Math.max(
-            30,
-            Math.round(mouseY - selectedBuilding.y)
-        );
-
-        return;
-    }
-
-    // move
-    selectedBuilding.x =
-        Math.round(mouseX - dragOffsetX);
-
-    selectedBuilding.y =
-        Math.round(mouseY - dragOffsetY);
 });
 
 canvas.addEventListener("mouseup", () => {
-
-    if (!selectedBuilding) return;
-
-    console.log(
-        `{ name: "${selectedBuilding.name}", x: ${selectedBuilding.x}, y: ${selectedBuilding.y}, w: ${selectedBuilding.w}, h: ${selectedBuilding.h}, color: "${selectedBuilding.color}" },`
-    );
-
-    selectedBuilding = null;
-    resizeModeX = false;
-    resizeModeY = false;
+    if (typeof devEditorMouseUp === "function" && devEditorMouseUp()) {
+        return;
+    }
 });
 
 // ===============================
