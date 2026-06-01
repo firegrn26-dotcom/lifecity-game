@@ -1166,7 +1166,7 @@ button.auth-button:active, .auth-button:active {
     height: 50px !important;
 }
 
-/* Музыка остаётся поверх авторизации; остальной HUD рисуется через canvas и теперь гасится в game.js. */
+/* Музыка остаётся поверх авторизации; остальной HUD рисуется через canvas и гасится в UI-модулях. */
 #musicPanel {
     opacity: 1 !important;
     pointer-events: auto !important;
@@ -1340,7 +1340,6 @@ button.auth-button:active, .auth-button:active {
     <script src="js/ui-auth.js"></script>
 
     <script src="js/render-loop.js"></script>
-    <script src="game.js"></script>
 
 <!-- LifeCity clean auth rewrite active -->
 </body>
