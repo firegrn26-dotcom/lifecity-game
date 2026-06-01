@@ -1,0 +1,17 @@
+LifeCity auth visibility fix
+============================
+
+Problem:
+- After the cleanup/optimization build, music panel was visible but the authorization window was not.
+- The clean DOM authorization layer (#lc-auth-root) could be hidden by fragile state checks after modules were reorganized.
+
+Fix:
+- Added public/js/ui-auth-visibility-fix.js.
+- Connected it after render-loop.js in public/index.html.
+- The fix keeps the clean DOM authorization window visible until successful authentication.
+- It hides old canvas/legacy auth controls so they do not overlap the new auth window.
+- It does not change server logic, login/register socket events, map, jobs, buildings, or gameplay systems.
+
+Check:
+- npm run check passes.
+- All connected browser JS modules are present.

@@ -1343,6 +1343,25 @@ button.auth-button:active, .auth-button:active {
     <script src="js/ui-auth-visibility-fix.js"></script>
 
 <!-- LifeCity clean auth rewrite active -->
+
+<style>
+/* LifeCity fix: после входа auth-слой полностью выключен и не перекрывает canvas */
+body.lc-auth-passed #lc-auth-root,
+body.lc-auth-passed .lc-auth-shell,
+body.lc-auth-passed .lc-auth-content,
+body.lc-auth-passed .lc-auth-card {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+#lc-auth-root { background: transparent !important; }
+#lc-auth-root.lc-auth-hidden,
+#lc-auth-root.lc-auth-hidden * {
+    pointer-events: none !important;
+    visibility: hidden !important;
+}
+</style>
 </body>
 </html>
 <!-- LifeCity fix: скрытое окно авторизации не должно перехватывать клики canvas -->

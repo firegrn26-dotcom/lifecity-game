@@ -757,7 +757,7 @@ function lcUpdateAuthWindowVisibility() {
     // изменения персонажа и другим canvas-окнам.
     root.style.display = shouldShow ? "flex" : "none";
     root.style.visibility = shouldShow ? "visible" : "hidden";
-    root.style.pointerEvents = shouldShow ? "none" : "none";
+    root.style.pointerEvents = shouldShow ? "auto" : "none";
 }
 
 window.addEventListener("DOMContentLoaded", () => {
