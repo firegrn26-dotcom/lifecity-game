@@ -58,15 +58,8 @@ function ensureRecyclingFactoryOnMap() {
         factory.h = Math.max(80, Number(factory.h) || recyclingFactory.h);
     }
 
-    if (Array.isArray(buildingZones) && !buildingZones.some(z => z.name === "Промышленная зона переработки")) {
-        buildingZones.push({
-            name: "Промышленная зона переработки",
-            x: factory.x - 20,
-            y: factory.y - 28,
-            w: factory.w + 320,
-            h: Math.max(300, factory.h + 64)
-        });
-    }
+    // V1.6.9: квартальные/промышленные подложки отключены полностью.
+    // Завод остается как здание, но дополнительные зоны вокруг него больше не создаются.
 
     return factory;
 }
