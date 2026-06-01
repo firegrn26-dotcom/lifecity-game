@@ -358,8 +358,10 @@ drawTrashActionPanel();
 // чтобы интерфейс не выглядел темным/задымленным.
 drawVisualOverhaulV2Screen();
 
-// Погодный слой авторизации плавно исчезает после входа.
-if (authWeatherFX.alpha > 0.01) drawAuthWeatherFX();
+// Auth background must stay transparent: город должен быть виден во время авторизации.
+// Старый погодный fullscreen-слой затемнял весь canvas и визуально перекрывал город,
+// поэтому для DOM-авторизации он отключен. Камера авторизации продолжает летать над городом.
+// if (authWeatherFX.alpha > 0.01) drawAuthWeatherFX();
 
 // ===============================
 // 🧩 ЕДИНЫЙ MODERN HUD

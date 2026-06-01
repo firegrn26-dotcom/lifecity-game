@@ -1363,6 +1363,15 @@ body.lc-auth-passed .lc-auth-card {
     visibility: hidden !important;
 }
 </style>
+
+<style>
+/* LifeCity V1.6.5: auth must not darken the city background */
+#lc-auth-root { background: transparent !important; backdrop-filter: none !important; }
+#lc-auth-root::before, #lc-auth-root::after { display: none !important; content: none !important; }
+.lc-auth-shell { background: linear-gradient(145deg, rgba(22, 42, 62, 0.82), rgba(8, 18, 30, 0.84)) !important; }
+body.lc-auth-active { background: transparent !important; }
+body.lc-auth-active #game { filter: none !important; opacity: 1 !important; }
+</style>
 </body>
 </html>
 <!-- LifeCity fix: скрытое окно авторизации не должно перехватывать клики canvas -->

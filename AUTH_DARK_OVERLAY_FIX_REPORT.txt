@@ -1,0 +1,7 @@
+LifeCity V1.6.5 auth dark overlay fix
+
+Исправлено:
+- Отключен canvas fullscreen authWeatherFX overlay, который затемнял весь город во время авторизации.
+- DOM auth-root оставлен прозрачным, без fullscreen-фона и backdrop-filter.
+- Камера авторизации остается активной через updateAuthCameraFlight().
+- Окно авторизации остается поверх города, но город виден за ним.
