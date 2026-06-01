@@ -239,17 +239,18 @@ function cancelJobAction() {
 }
 
 let roads = [
-    // Более предсказуемая квартальная сетка: прямые магистрали + крупные свободные зоны под здания.
-    { name: "пр. Life City", type: "avenue", lanes: 4, width: 96, points: [{x: 720, y: -360}, {x: 720, y: 1460}] },
-    { name: "пр. Центральный", type: "avenue", lanes: 4, width: 100, points: [{x: -650, y: 420}, {x: 2150, y: 420}] },
-    { name: "ш. Южное", type: "highway", lanes: 4, width: 112, points: [{x: -700, y: 980}, {x: 2250, y: 980}] },
-    { name: "пр. Северный", type: "avenue", lanes: 3, width: 78, points: [{x: -650, y: 120}, {x: 2150, y: 120}] },
-    { name: "ул. Западная", type: "street", lanes: 2, width: 58, points: [{x: 220, y: -300}, {x: 220, y: 1360}] },
-    { name: "ул. Деловая", type: "street", lanes: 3, width: 74, points: [{x: 1080, y: -300}, {x: 1080, y: 1360}] },
-    { name: "ул. Восточная", type: "street", lanes: 2, width: 60, points: [{x: 1520, y: -300}, {x: 1520, y: 1360}] },
-    { name: "ул. Торговая", type: "street", lanes: 2, width: 62, points: [{x: -520, y: 650}, {x: 1960, y: 650}] },
-    { name: "пер. Кафейный", type: "lane", lanes: 1, width: 32, points: [{x: 220, y: 260}, {x: 720, y: 260}] },
-    { name: "пер. Зеленый", type: "lane", lanes: 1, width: 34, points: [{x: 430, y: 420}, {x: 430, y: 980}] }
+    // UrbanRebuild V1.1: магистрали расширены под полноценное движение транспорта.
+    // Главные дороги получили 6 полос, увеличенный асфальт, широкие бордюры и место под будущие машины.
+    { name: "пр. Life City", type: "avenue", lanes: 6, width: 144, points: [{x: 720, y: -380}, {x: 720, y: 1500}] },
+    { name: "пр. Центральный", type: "avenue", lanes: 6, width: 152, points: [{x: -760, y: 420}, {x: 2260, y: 420}] },
+    { name: "ш. Южное", type: "highway", lanes: 6, width: 172, points: [{x: -780, y: 980}, {x: 2320, y: 980}] },
+    { name: "пр. Северный", type: "avenue", lanes: 4, width: 124, points: [{x: -760, y: 120}, {x: 2260, y: 120}] },
+    { name: "ул. Западная", type: "street", lanes: 2, width: 66, points: [{x: 220, y: -320}, {x: 220, y: 1380}] },
+    { name: "ул. Деловая", type: "street", lanes: 4, width: 96, points: [{x: 1080, y: -320}, {x: 1080, y: 1380}] },
+    { name: "ул. Восточная", type: "street", lanes: 2, width: 72, points: [{x: 1520, y: -320}, {x: 1520, y: 1380}] },
+    { name: "ул. Торговая", type: "street", lanes: 3, width: 88, points: [{x: -560, y: 650}, {x: 2020, y: 650}] },
+    { name: "пер. Кафейный", type: "lane", lanes: 1, width: 36, points: [{x: 220, y: 275}, {x: 720, y: 275}] },
+    { name: "пер. Зеленый", type: "lane", lanes: 1, width: 38, points: [{x: 430, y: 420}, {x: 430, y: 980}] }
 ];
 
 let districts = [
@@ -305,17 +306,27 @@ let parks = [
 ];
 
 let pedestrianPaths = [
- {points:[{x:-650,y:355},{x:2150,y:355}], width:18},
- {points:[{x:-650,y:485},{x:2150,y:485}], width:18},
- {points:[{x:655,y:-360},{x:655,y:1460}], width:18},
- {points:[{x:785,y:-360},{x:785,y:1460}], width:18}
+ // Пешеходные линии сдвинуты к новым широким магистралям: тротуары идут за бордюром, а не поверх асфальта.
+ {points:[{x:-760,y:326},{x:2260,y:326}], width:22},
+ {points:[{x:-760,y:514},{x:2260,y:514}], width:22},
+ {points:[{x:626,y:-380},{x:626,y:1500}], width:22},
+ {points:[{x:814,y:-380},{x:814,y:1500}], width:22},
+ {points:[{x:-760,y:47},{x:2260,y:47}], width:18},
+ {points:[{x:-760,y:193},{x:2260,y:193}], width:18},
+ {points:[{x:-780,y:872},{x:2320,y:872}], width:22},
+ {points:[{x:-780,y:1088},{x:2320,y:1088}], width:22}
 ];
 
 let crosswalks = [
- {x:720,y:420,angle:0,roadWidth:96,len:110},
- {x:1080,y:420,angle:0,roadWidth:100,len:110},
- {x:1520,y:420,angle:0,roadWidth:100,len:110},
- {x:720,y:980,angle:0,roadWidth:112,len:120}
+ {x:720,y:420,angle:0,roadWidth:152,len:172},
+ {x:1080,y:420,angle:0,roadWidth:152,len:172},
+ {x:1520,y:420,angle:0,roadWidth:152,len:172},
+ {x:720,y:980,angle:0,roadWidth:172,len:192},
+ {x:1080,y:980,angle:0,roadWidth:172,len:192},
+ {x:1520,y:980,angle:0,roadWidth:172,len:192},
+ {x:720,y:120,angle:0,roadWidth:124,len:144},
+ {x:1080,y:120,angle:0,roadWidth:124,len:144},
+ {x:1520,y:120,angle:0,roadWidth:124,len:144}
 ];
 
 let cityDecor = [];
@@ -453,14 +464,15 @@ function drawRoadMarkings(road) {
             for (let i = 1; i < lanes; i++) {
                 const offset = -road.width / 2 + laneW * i;
                 if (Math.abs(offset) < 2) continue;
-                drawBrokenSegmentLine(a, b, offset, road, "rgba(245,245,245,0.44)", 2, [24, 22]);
+                const laneDash = road.type === "highway" || road.type === "avenue" ? [34, 24] : [26, 22];
+                drawBrokenSegmentLine(a, b, offset, road, "rgba(245,245,245,0.50)", road.type === "highway" ? 2.4 : 2, laneDash);
             }
         }
 
-        // Тонкая кромка асфальта у бордюра.
-        const edge = road.width / 2 - 3;
-        drawBrokenSegmentLine(a, b, edge, road, "rgba(255,255,255,0.12)", 1, null);
-        drawBrokenSegmentLine(a, b, -edge, road, "rgba(0,0,0,0.18)", 1, null);
+        // Более заметная кромка асфальта у широких магистралей.
+        const edge = road.width / 2 - 5;
+        drawBrokenSegmentLine(a, b, edge, road, "rgba(255,255,255,0.18)", road.type === "highway" ? 2 : 1.4, null);
+        drawBrokenSegmentLine(a, b, -edge, road, "rgba(0,0,0,0.24)", road.type === "highway" ? 2 : 1.4, null);
     });
 
     ctx.restore();
