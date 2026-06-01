@@ -183,21 +183,9 @@ function drawBuilding25DShell(x, y, w, h, p, z) {
 }
 
 function drawRoofLabel(x, y, w, h, text, accent, yRatio = 0.65) {
-    ctx.save();
-    const safeText = String(text || "").toUpperCase();
-    const boxW = Math.min(w - 18, Math.max(70, safeText.length * 10.5 + 24));
-    const boxH = Math.max(22, Math.min(30, h * 0.18));
-    const lx = x + w / 2 - boxW / 2;
-    const ly = y + h * yRatio - boxH / 2;
-
-    drawTopDownBlock(lx, ly, boxW, boxH, 8, "rgba(3,10,22,0.80)", colorWithAlpha(accent, 0.82), 1.2);
-
-    ctx.font = `bold ${Math.max(10, Math.min(14, Math.floor((boxW - 14) / Math.max(4, safeText.length * 0.58))))}px Arial`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "rgba(255,255,255,0.96)";
-    ctx.fillText(safeText, lx + boxW / 2, ly + boxH / 2 + 0.5);
-    ctx.restore();
+    // V1.6.8: маленькие дубли названий на крышах отключены.
+    // Названия зданий теперь показываются только через уникальные 2.5D-вывески/фасады.
+    return;
 }
 
 function drawRoofUnit(x, y, w, h, accent, alpha = 1, radius = 5) {
@@ -264,7 +252,7 @@ function drawRecyclingFactoryMapZone(b) {
     ctx.font = "bold 13px Arial";
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
-    ctx.fillText("ПРОМЗОНА ПЕРЕРАБОТКИ", x + 12, y - 4);
+    // V1.6.8: текстовая подложка промзоны отключена, чтобы не дублировать названия на карте.
     ctx.restore();
 }
 
@@ -532,47 +520,120 @@ function drawBuildingWorkAnimation25D(x, y, w, h, p) {
 
 
 function drawRoofGeometry25D(x, y, w, h, p) {
-    // Нормальная крыша: скаты/парапеты/техблоки вместо плоского прямоугольника.
+    // V1.6.8: полноценная 2.5D-крыша — свесы, парапеты, ребра, техблоки и тени.
+    // Это не меняет физический прямоугольник здания, только визуальный верхний слой.
     ctx.save();
-    const inset = Math.max(8, Math.min(18, Math.min(w, h) * 0.09));
+    const inset = Math.max(8, Math.min(22, Math.min(w, h) * 0.10));
+    const accent = p.accent || "#58c7ff";
+    const roofShadow = "rgba(0,0,0,0.22)";
 
-    if (p.type === "home" || p.type === "city" || p.type === "bank") {
-        // Двускатная/административная крыша с центральным ребром.
-        ctx.beginPath();
-        ctx.moveTo(x + inset, y + inset);
-        ctx.lineTo(x + w / 2, y + h * 0.42);
-        ctx.lineTo(x + w - inset, y + inset);
-        ctx.strokeStyle = "rgba(255,255,255,0.16)";
+    function roofRim(alpha = 0.22) {
+        roundedRect(x + 5, y + 5, w - 10, h - 10, Math.min(14, w / 10, h / 10));
+        ctx.strokeStyle = colorWithAlpha(accent, alpha);
         ctx.lineWidth = 1.4;
         ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(x + w / 2, y + h * 0.42);
-        ctx.lineTo(x + w / 2, y + h - inset);
-        ctx.strokeStyle = "rgba(0,0,0,0.20)";
-        ctx.stroke();
-    } else if (p.type === "shop" || p.type === "cafe" || p.type === "pharmacy") {
-        // Коммерческая плоская крыша с высоким парапетом.
-        drawTopDownBlock(x + inset, y + inset, w - inset * 2, h - inset * 2, 8, "rgba(255,255,255,0.045)", colorWithAlpha(p.accent, 0.20), 1);
-        ctx.strokeStyle = "rgba(255,255,255,0.12)";
-        ctx.beginPath();
-        ctx.moveTo(x + inset, y + h * 0.33);
-        ctx.lineTo(x + w - inset, y + h * 0.33);
-        ctx.stroke();
-    } else if (p.type === "service" || p.type === "recyclingFactory") {
-        // Промышленная крыша: ребра металлопрофиля.
-        ctx.strokeStyle = "rgba(255,255,255,0.10)";
+        roundedRect(x + 11, y + 11, w - 22, h - 22, Math.min(10, w / 13, h / 13));
+        ctx.strokeStyle = "rgba(255,255,255,0.085)";
         ctx.lineWidth = 1;
-        const ribs = Math.max(4, Math.min(10, Math.floor(w / 45)));
+        ctx.stroke();
+    }
+
+    function roofVent(vx, vy, vw, vh, glow = 0.18) {
+        drawTopDownBlock(vx + 2, vy + 3, vw, vh, 5, roofShadow, null);
+        drawTopDownBlock(vx, vy, vw, vh, 5, "rgba(10,16,24,0.72)", "rgba(255,255,255,0.13)", 1);
+        ctx.strokeStyle = colorWithAlpha(accent, glow);
+        ctx.beginPath();
+        ctx.moveTo(vx + 5, vy + vh * 0.50);
+        ctx.lineTo(vx + vw - 5, vy + vh * 0.50);
+        ctx.moveTo(vx + vw * 0.50, vy + 4);
+        ctx.lineTo(vx + vw * 0.50, vy + vh - 4);
+        ctx.stroke();
+    }
+
+    function roofSkylight(vx, vy, vw, vh) {
+        const g = ctx.createLinearGradient(vx, vy, vx + vw, vy + vh);
+        g.addColorStop(0, colorWithAlpha(accent, 0.34));
+        g.addColorStop(0.48, "rgba(220,245,255,0.12)");
+        g.addColorStop(1, "rgba(5,12,22,0.56)");
+        drawTopDownBlock(vx + 2, vy + 3, vw, vh, 5, "rgba(0,0,0,0.20)", null);
+        drawTopDownBlock(vx, vy, vw, vh, 5, g, "rgba(255,255,255,0.18)", 1);
+    }
+
+    if (p.type === "home") {
+        // Жилой дом: двускатная крыша с объемным коньком и секциями.
+        const ridgeY = y + h * 0.38;
+        ctx.fillStyle = "rgba(255,255,255,0.035)";
+        ctx.beginPath();
+        ctx.moveTo(x + inset, y + inset);
+        ctx.lineTo(x + w / 2, ridgeY);
+        ctx.lineTo(x + w - inset, y + inset);
+        ctx.lineTo(x + w - inset * 0.8, y + h - inset);
+        ctx.lineTo(x + inset * 0.8, y + h - inset);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.18)";
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(x + inset, y + inset);
+        ctx.lineTo(x + w / 2, ridgeY);
+        ctx.lineTo(x + w - inset, y + inset);
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(0,0,0,0.28)";
+        ctx.beginPath();
+        ctx.moveTo(x + w / 2, ridgeY);
+        ctx.lineTo(x + w / 2, y + h - inset);
+        ctx.stroke();
+        for (let i = 0; i < 3; i++) roofVent(x + w * (0.17 + i * 0.24), y + h * 0.63, w * 0.08, h * 0.10, 0.12);
+    } else if (p.type === "city" || p.type === "bank" || p.type === "police") {
+        // Административные здания: строгий высокий парапет и центральный купол/щит.
+        roofRim(0.28);
+        drawTopDownBlock(x + inset, y + inset, w - inset * 2, h * 0.22, 8, "rgba(255,255,255,0.052)", colorWithAlpha(accent, 0.18), 1);
+        drawTopDownBlock(x + w * 0.36, y + h * 0.36, w * 0.28, h * 0.18, 10, "rgba(255,255,255,0.050)", colorWithAlpha(accent, 0.25), 1.2);
+        roofSkylight(x + w * 0.41, y + h * 0.41, w * 0.18, h * 0.08);
+        roofVent(x + w * 0.14, y + h * 0.66, w * 0.10, h * 0.11);
+        roofVent(x + w * 0.76, y + h * 0.66, w * 0.10, h * 0.11);
+    } else if (p.type === "shop" || p.type === "cafe" || p.type === "pharmacy") {
+        // Коммерция: плоская крыша с высоким парапетом, навесом и световыми окнами.
+        roofRim(0.30);
+        drawTopDownBlock(x + inset, y + inset, w - inset * 2, h - inset * 2, 9, "rgba(255,255,255,0.038)", colorWithAlpha(accent, 0.16), 1);
+        drawTopDownBlock(x + w * 0.12, y + h * 0.24, w * 0.76, h * 0.11, 7, colorWithAlpha(accent, 0.13), colorWithAlpha(accent, 0.28), 1);
+        for (let i = 0; i < 3; i++) roofSkylight(x + w * (0.18 + i * 0.22), y + h * 0.56, w * 0.13, h * 0.10);
+        roofVent(x + w * 0.75, y + h * 0.72, w * 0.09, h * 0.11);
+    } else if (p.type === "service" || p.type === "recyclingFactory") {
+        // Промка: металлопрофиль, крупные вентиляционные блоки, технические световые полосы.
+        roofRim(0.22);
+        ctx.strokeStyle = "rgba(255,255,255,0.11)";
+        ctx.lineWidth = 1;
+        const ribs = Math.max(5, Math.min(14, Math.floor(w / 38)));
         for (let i = 1; i < ribs; i++) {
             const rx = x + (w / ribs) * i;
             ctx.beginPath();
-            ctx.moveTo(rx, y + 10);
-            ctx.lineTo(rx - 10, y + h - 10);
+            ctx.moveTo(rx, y + inset);
+            ctx.lineTo(rx - 12, y + h - inset);
             ctx.stroke();
         }
+        const units = p.type === "recyclingFactory" ? 5 : 3;
+        for (let i = 0; i < units; i++) {
+            roofVent(x + w * (0.12 + i * (0.70 / Math.max(1, units - 1))), y + h * 0.23, w * 0.075, h * 0.18, 0.24);
+        }
+        drawTopDownBlock(x + w * 0.12, y + h * 0.72, w * 0.76, h * 0.08, 5, colorWithAlpha(accent, 0.10), colorWithAlpha(accent, 0.25), 1);
+    } else if (p.type === "trash") {
+        roofRim(0.20);
+        drawTopDownBlock(x + w * 0.20, y + h * 0.22, w * 0.60, h * 0.18, 5, "rgba(255,255,255,0.05)", colorWithAlpha(accent, 0.20), 1);
+        roofVent(x + w * 0.36, y + h * 0.56, w * 0.28, h * 0.18, 0.18);
     } else {
-        drawTopDownBlock(x + inset, y + inset, w - inset * 2, h - inset * 2, 8, "rgba(255,255,255,0.035)", "rgba(255,255,255,0.08)", 1);
+        roofRim(0.20);
+        roofVent(x + inset, y + inset, Math.max(24, w * 0.12), Math.max(14, h * 0.12), 0.14);
     }
+
+    // Общая нижняя кромка свеса крыши — усиливает объем.
+    ctx.strokeStyle = "rgba(0,0,0,0.30)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x + 8, y + h - 7);
+    ctx.lineTo(x + w - 8, y + h - 7);
+    ctx.stroke();
+
     ctx.restore();
 }
 

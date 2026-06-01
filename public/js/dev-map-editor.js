@@ -60,22 +60,8 @@ function devGetEditableMapObjects() {
         });
     }
 
-    if (Array.isArray(buildingZones)) {
-        buildingZones.forEach((z, index) => {
-            if (!z) return;
-            result.push({
-                kind: "buildingZone",
-                label: `Подложка: ${z.name || index}`,
-                id: devObjectId("buildingZone", z, index),
-                ref: z,
-                x: z.x,
-                y: z.y,
-                w: z.w,
-                h: z.h,
-                priority: 1
-            });
-        });
-    }
+    // V1.6.8: buildingZones больше не редактируются и не рисуются как подложки кварталов.
+
 
     if (Array.isArray(roads)) {
         roads.forEach((r, index) => {
@@ -96,6 +82,38 @@ function devGetEditableMapObjects() {
                 w: maxX - minX,
                 h: maxY - minY,
                 priority: 0
+            });
+        });
+    }
+
+    const roadside = typeof getRoadsideLayoutV3 === "function" ? getRoadsideLayoutV3() : null;
+    if (roadside) {
+        (roadside.lights || []).forEach((l, index) => {
+            if (!l) return;
+            result.push({
+                kind: "streetLight",
+                label: `Фонарь: ${l.roadName || l.road?.name || index}`,
+                id: l.id || devObjectId("streetLight", l, index),
+                ref: l,
+                x: Math.round(l.x - 18),
+                y: Math.round(l.y - 38),
+                w: 36,
+                h: 46,
+                priority: 6
+            });
+        });
+        (roadside.signs || []).forEach((sg, index) => {
+            if (!sg) return;
+            result.push({
+                kind: "streetSign",
+                label: `Табличка: ${sg.roadName || sg.road?.name || index}`,
+                id: sg.id || devObjectId("streetSign", sg, index),
+                ref: sg,
+                x: Math.round(sg.x - 46),
+                y: Math.round(sg.y - 38),
+                w: 92,
+                h: 48,
+                priority: 5
             });
         });
     }
@@ -139,6 +157,19 @@ function devFindObjectAt(wx, wy) {
 function devCreatePatch(item) {
     const ref = item?.ref;
     if (!ref) return null;
+
+    if (item.kind === "streetLight" || item.kind === "streetSign") {
+        return {
+            kind: item.kind,
+            id: item.id,
+            name: ref.name || item.label || item.id,
+            roadName: ref.roadName || ref.road?.name || "",
+            x: Math.round(Number(ref.x) || 0),
+            y: Math.round(Number(ref.y) || 0),
+            edgeX: Math.round(Number(ref.edgeX) || Number(ref.x) || 0),
+            edgeY: Math.round(Number(ref.edgeY) || Number(ref.y) || 0)
+        };
+    }
 
     if (item.kind === "road") {
         return {
@@ -190,11 +221,32 @@ function devApplyRoadPatch(patch) {
     return true;
 }
 
+function devUpsertRoadsideOverride(listName, patch) {
+    if (!patch || !patch.id) return false;
+    const list = listName === "streetLightOverrides" ? streetLightOverrides : streetSignOverrides;
+    const next = {
+        id: patch.id,
+        name: patch.name || patch.id,
+        roadName: patch.roadName || "",
+        x: Math.round(Number(patch.x) || 0),
+        y: Math.round(Number(patch.y) || 0),
+        edgeX: Math.round(Number(patch.edgeX) || Number(patch.x) || 0),
+        edgeY: Math.round(Number(patch.edgeY) || Number(patch.y) || 0)
+    };
+    const idx = list.findIndex(item => item && item.id === patch.id);
+    if (idx >= 0) list[idx] = { ...list[idx], ...next };
+    else list.push(next);
+    roadsideLayoutV3Cache = null;
+    return true;
+}
+
 function applyDevMapObjectPatch(patch) {
     if (!patch || typeof patch !== "object") return false;
     if (patch.kind === "building") return devApplyRectPatchToArray(buildings, patch, "building");
     if (patch.kind === "park") return devApplyRectPatchToArray(parks, patch, "park");
-    if (patch.kind === "buildingZone") return devApplyRectPatchToArray(buildingZones, patch, "buildingZone");
+    if (patch.kind === "buildingZone") return false;
+    if (patch.kind === "streetLight") return devUpsertRoadsideOverride("streetLightOverrides", patch);
+    if (patch.kind === "streetSign") return devUpsertRoadsideOverride("streetSignOverrides", patch);
     if (patch.kind === "road") return devApplyRoadPatch(patch);
     return false;
 }
@@ -204,6 +256,8 @@ function applyDevMapObjectsState(state) {
     for (const patch of Object.values(state.buildings || {})) applyDevMapObjectPatch(patch);
     for (const patch of Object.values(state.parks || {})) applyDevMapObjectPatch(patch);
     for (const patch of Object.values(state.buildingZones || {})) applyDevMapObjectPatch(patch);
+    for (const patch of Object.values(state.streetLights || {})) applyDevMapObjectPatch(patch);
+    for (const patch of Object.values(state.streetSigns || {})) applyDevMapObjectPatch(patch);
     for (const patch of Object.values(state.roads || {})) applyDevMapObjectPatch(patch);
     roadsideLayoutV3Cache = null;
 }
@@ -235,8 +289,8 @@ function devEditorMouseDown(e) {
 
     devSelectedMapObject = item;
     selectedBuilding = item.kind === "building" ? item.ref : null;
-    resizeModeX = e.shiftKey && item.kind !== "road";
-    resizeModeY = e.ctrlKey && item.kind !== "road";
+    resizeModeX = e.shiftKey && !["road", "streetLight", "streetSign"].includes(item.kind);
+    resizeModeY = e.ctrlKey && !["road", "streetLight", "streetSign"].includes(item.kind);
 
     if (item.kind === "road") {
         devDragOffsetX = wx;
@@ -270,6 +324,18 @@ function devEditorMouseMove(e) {
         devDragOffsetX = wx;
         devDragOffsetY = wy;
         roadsideLayoutV3Cache = null;
+        return true;
+    }
+
+    if (item.kind === "streetLight" || item.kind === "streetSign") {
+        const newX = Math.round(wx - devDragOffsetX);
+        const newY = Math.round(wy - devDragOffsetY);
+        const dx = newX - Math.round(Number(ref.x) || 0);
+        const dy = newY - Math.round(Number(ref.y) || 0);
+        ref.x = newX;
+        ref.y = newY;
+        ref.edgeX = Math.round((Number(ref.edgeX) || newX) + dx);
+        ref.edgeY = Math.round((Number(ref.edgeY) || newY) + dy);
         return true;
     }
 

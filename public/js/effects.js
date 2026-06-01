@@ -395,6 +395,37 @@ function forEachRoadLightPoint(step, callback, options = {}) {
     for (const p of points) callback(p.x, p.y, p.road, p.i, p);
 }
 
+function getRoadsideObjectId25D(kind, road, segmentIndex, localIndex) {
+    const roadName = String(road?.name || "road")
+        .trim()
+        .toLowerCase()
+        .replace(/ё/g, "е")
+        .replace(/[^a-zа-я0-9]+/gi, "_")
+        .replace(/^_+|_+$/g, "") || "road";
+    return `${kind}_${roadName}_${segmentIndex}_${localIndex}`;
+}
+
+function applyRoadsideOverride25D(item, override) {
+    if (!item || !override) return item;
+    if (Number.isFinite(Number(override.x))) item.x = Math.round(Number(override.x));
+    if (Number.isFinite(Number(override.y))) item.y = Math.round(Number(override.y));
+    if (Number.isFinite(Number(override.edgeX))) item.edgeX = Math.round(Number(override.edgeX));
+    if (Number.isFinite(Number(override.edgeY))) item.edgeY = Math.round(Number(override.edgeY));
+    item.manual = true;
+    return item;
+}
+
+function getRoadsideOverrideMap25D(kind) {
+    const list = kind === "streetLight" ? (typeof streetLightOverrides !== "undefined" ? streetLightOverrides : []) : (typeof streetSignOverrides !== "undefined" ? streetSignOverrides : []);
+    const map = new Map();
+    if (Array.isArray(list)) {
+        for (const item of list) {
+            if (item && item.id) map.set(String(item.id), item);
+        }
+    }
+    return map;
+}
+
 let roadsideLayoutV3Cache = null;
 
 function getRoadsideLayoutV3() {
@@ -449,11 +480,15 @@ function getRoadsideLayoutV3() {
         if (!pointFree(postX, postY, kind === "light" ? 108 : 82)) return;
 
         const item = {
+            id: getRoadsideObjectId25D(kind === "light" ? "streetLight" : "streetSign", road, segmentIndex, localIndex),
+            kind: kind === "light" ? "streetLight" : "streetSign",
+            name: `${kind === "light" ? "Фонарь" : "Табличка"}: ${road.name || "дорога"}`,
             x: postX,
             y: postY,
             edgeX,
             edgeY,
             road,
+            roadName: road.name || "",
             nx,
             ny,
             angle: Math.atan2(dy, dx),
@@ -496,6 +531,11 @@ function getRoadsideLayoutV3() {
             }
         });
     }
+
+    const lightOverrides = getRoadsideOverrideMap25D("streetLight");
+    const signOverrides = getRoadsideOverrideMap25D("streetSign");
+    layout.lights = layout.lights.map(item => applyRoadsideOverride25D(item, lightOverrides.get(item.id)));
+    layout.signs = layout.signs.map(item => applyRoadsideOverride25D(item, signOverrides.get(item.id)));
 
     roadsideLayoutV3Cache = layout;
     return layout;

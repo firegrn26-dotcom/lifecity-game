@@ -181,21 +181,9 @@ function drawPedestrianPaths() {
 }
 
 function drawBuildingZones() {
-    if (typeof isDevOptionOn !== "function" || !isDevOptionOn("showDistricts")) return;
-    ctx.save();
-    for (const z of buildingZones) {
-        ctx.fillStyle = "rgba(88,199,255,0.035)";
-        ctx.strokeStyle = "rgba(88,199,255,0.16)";
-        ctx.lineWidth = 1.5;
-        roundedRect(z.x - camera.x, z.y - camera.y, z.w, z.h, 12);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = "rgba(180,225,255,0.38)";
-        ctx.font = "bold 12px Arial";
-        ctx.textAlign = "left";
-        ctx.fillText(z.name, z.x - camera.x + 10, z.y - camera.y + 20);
-    }
-    ctx.restore();
+    // V1.6.8: подложки кварталов под зданиями отключены.
+    // Данные buildingZones оставлены только как служебные координаты/совместимость.
+    return;
 }
 
 function drawPark(p) {

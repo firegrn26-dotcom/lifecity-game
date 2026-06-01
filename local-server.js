@@ -159,6 +159,8 @@ function createEmptyMapObjectsDatabase() {
             buildings: {},
             parks: {},
             buildingZones: {},
+            streetLights: {},
+            streetSigns: {},
             roads: {}
         }
     };
@@ -170,7 +172,7 @@ function normalizeMapObjectsDatabase(data) {
     src.version = src.version || empty.version;
     src.updatedAt = Number(src.updatedAt) || 0;
     src.objects = src.objects && typeof src.objects === "object" ? src.objects : {};
-    for (const key of ["buildings", "parks", "buildingZones", "roads"]) {
+    for (const key of ["buildings", "parks", "buildingZones", "streetLights", "streetSigns", "roads"]) {
         src.objects[key] = src.objects[key] && typeof src.objects[key] === "object" ? src.objects[key] : {};
     }
     return src;
@@ -211,12 +213,24 @@ function sanitizeDevMapObjectPatch(raw) {
     if (!raw || typeof raw !== "object") return null;
 
     const kind = String(raw.kind || "");
-    if (!["building", "park", "buildingZone", "road"].includes(kind)) return null;
+    if (!["building", "park", "buildingZone", "streetLight", "streetSign", "road"].includes(kind)) return null;
 
     const id = String(raw.id || raw.name || "").trim().slice(0, 120);
     if (!id) return null;
 
     const patch = { kind, id, name: String(raw.name || id).slice(0, 120) };
+
+    if (kind === "streetLight" || kind === "streetSign") {
+        for (const key of ["x", "y"]) {
+            const value = Math.round(Number(raw[key]));
+            if (!Number.isFinite(value)) return null;
+            patch[key] = value;
+        }
+        patch.edgeX = Number.isFinite(Number(raw.edgeX)) ? Math.round(Number(raw.edgeX)) : patch.x;
+        patch.edgeY = Number.isFinite(Number(raw.edgeY)) ? Math.round(Number(raw.edgeY)) : patch.y;
+        patch.roadName = String(raw.roadName || "").slice(0, 120);
+        return patch;
+    }
 
     if (kind === "road") {
         const points = Array.isArray(raw.points) ? raw.points.slice(0, 12) : [];
@@ -250,6 +264,8 @@ function applyDevMapObjectPatchToDb(patch) {
         building: "buildings",
         park: "parks",
         buildingZone: "buildingZones",
+        streetLight: "streetLights",
+        streetSign: "streetSigns",
         road: "roads"
     };
 
@@ -370,8 +386,26 @@ function patchRecyclingFactoryConst(filePath, factoryPatch) {
     fs.writeFileSync(filePath, raw, "utf8");
 }
 
+
+function applyRoadsidePatchToSourceArray(arr, patch) {
+    if (!Array.isArray(arr) || !patch || !patch.id) return false;
+    const next = {
+        id: patch.id,
+        name: patch.name || patch.id,
+        roadName: patch.roadName || "",
+        x: Math.round(Number(patch.x) || 0),
+        y: Math.round(Number(patch.y) || 0),
+        edgeX: Math.round(Number(patch.edgeX) || Number(patch.x) || 0),
+        edgeY: Math.round(Number(patch.edgeY) || Number(patch.y) || 0)
+    };
+    const idx = arr.findIndex(item => item && item.id === patch.id);
+    if (idx >= 0) arr[idx] = { ...arr[idx], ...next };
+    else arr.push(next);
+    return true;
+}
+
 function countMapObjectPatches() {
-    return ["buildings", "parks", "buildingZones", "roads"]
+    return ["buildings", "parks", "buildingZones", "streetLights", "streetSigns", "roads"]
         .reduce((sum, key) => sum + Object.keys(mapObjectsDb.objects[key] || {}).length, 0);
 }
 
@@ -393,6 +427,8 @@ function commitMapObjectsDbToSourceFiles() {
     const roadsSource = parseClientArrayFromFile(cityFile, "roads");
     const buildingZonesSource = parseClientArrayFromFile(cityFile, "buildingZones");
     const parksSource = parseClientArrayFromFile(cityFile, "parks");
+    const streetLightOverridesSource = parseClientArrayFromFile(cityFile, "streetLightOverrides");
+    const streetSignOverridesSource = parseClientArrayFromFile(cityFile, "streetSignOverrides");
 
     let applied = 0;
     let skipped = 0;
@@ -408,7 +444,14 @@ function commitMapObjectsDbToSourceFiles() {
         if (applyRectPatchToSourceArray(parksSource, patch, "park")) applied++; else skipped++;
     }
     for (const patch of Object.values(mapObjectsDb.objects.buildingZones || {})) {
+        // V1.6.8: подложки кварталов больше не используются визуально, но старые правки не ломаем.
         if (applyRectPatchToSourceArray(buildingZonesSource, patch, "buildingZone")) applied++; else skipped++;
+    }
+    for (const patch of Object.values(mapObjectsDb.objects.streetLights || {})) {
+        if (applyRoadsidePatchToSourceArray(streetLightOverridesSource, patch)) applied++; else skipped++;
+    }
+    for (const patch of Object.values(mapObjectsDb.objects.streetSigns || {})) {
+        if (applyRoadsidePatchToSourceArray(streetSignOverridesSource, patch)) applied++; else skipped++;
     }
     for (const patch of Object.values(mapObjectsDb.objects.roads || {})) {
         if (applyRoadPatchToSourceArray(roadsSource, patch)) applied++; else skipped++;
@@ -417,6 +460,8 @@ function commitMapObjectsDbToSourceFiles() {
     replaceClientArrayInFile(mapFile, "buildings", buildingsSource);
     replaceClientArrayInFile(cityFile, "roads", roadsSource);
     replaceClientArrayInFile(cityFile, "buildingZones", buildingZonesSource);
+    replaceClientArrayInFile(cityFile, "streetLightOverrides", streetLightOverridesSource);
+    replaceClientArrayInFile(cityFile, "streetSignOverrides", streetSignOverridesSource);
     replaceClientArrayInFile(cityFile, "parks", parksSource);
     patchRecyclingFactoryConst(mapFile, factoryPatch);
 

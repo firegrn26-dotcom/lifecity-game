@@ -69,6 +69,13 @@ let parks = [
     { name: "Промышленный буфер", x: 1850, y: 900, w: 160, h: 260, fountain: false }
 ];
 
+
+
+// Ручные правки roadside-объектов из Dev Mode.
+// Если объект не трогали, он генерируется автоматически от дороги.
+let streetLightOverrides = [];
+let streetSignOverrides = [];
+
 let pedestrianPaths = [
  // Тротуары синхронизированы с новой крупной сеткой.
  {points:[{x:-940,y:446},{x:2700,y:446}], width:24},
