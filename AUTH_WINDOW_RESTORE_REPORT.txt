@@ -1,0 +1,15 @@
+LifeCity V1.6.4 — Auth Window Restore
+
+Исправлено:
+- город на фоне теперь продолжает рендериться во время авторизации;
+- окно авторизации снова создается отдельным DOM-модулем ui-auth-window.js;
+- окно находится поверх canvas, но без темного fullscreen-фона;
+- режимы вход/регистрация снова переключаются двумя кнопками;
+- поля логина, пароля, ника, повтор пароля и чекбоксы синхронизируются с auth state;
+- после успешного authOk overlay удаляется через существующий auth visibility fix;
+- добавлен fallback для lcCreateAuthWindow(), lcAuthSetError(), syncAuthFromDom(), syncAuthToDom().
+
+Проверка:
+- npm run check проходит;
+- check-browser-smoke проходит;
+- ui-auth-window.js подключен в index.html после ui-auth.js и перед render-loop.js.
