@@ -304,9 +304,19 @@ let parks = [
     { name: "Восточный газон", x: 1210, y: 205, w: 230, h: 100, fountain: false }
 ];
 
-let pedestrianPaths = [];
+let pedestrianPaths = [
+ {points:[{x:-650,y:355},{x:2150,y:355}], width:18},
+ {points:[{x:-650,y:485},{x:2150,y:485}], width:18},
+ {points:[{x:655,y:-360},{x:655,y:1460}], width:18},
+ {points:[{x:785,y:-360},{x:785,y:1460}], width:18}
+];
 
-let crosswalks = [];
+let crosswalks = [
+ {x:720,y:420,angle:0,roadWidth:96,len:110},
+ {x:1080,y:420,angle:0,roadWidth:100,len:110},
+ {x:1520,y:420,angle:0,roadWidth:100,len:110},
+ {x:720,y:980,angle:0,roadWidth:112,len:120}
+];
 
 let cityDecor = [];
 
@@ -483,7 +493,8 @@ function drawCrosswalk(c) {
 }
 
 function drawPedestrianPaths() {
-    // Пешеходные дорожки удалены из карты.
+    for (const path of pedestrianPaths){ drawPolyline(path.points, path.width+8, "rgba(0,0,0,0.12)","round","round"); drawPolyline(path.points, path.width, "rgba(170,170,170,0.95)","round","round"); }
+ for (const c of crosswalks) drawCrosswalk(c);
 }
 
 function drawBuildingZones() {
